@@ -25,8 +25,8 @@
     "keybindings": [
       {
         "command": "clonepilot.getCompletion",
-        "key": "ctrl+alt+f",
-        "mac": "cmd+alt+f",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
         "when": "editorTextFocus"
       }
     ],

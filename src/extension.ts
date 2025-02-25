@@ -1,8 +1,8 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import axios from 'axios';
-import { errorMonitor } from 'events';
+
+import * as lib from './lib';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -53,25 +53,39 @@ export function activate(context: vscode.ExtensionContext) {
 				// Get current document content
 				const document = editor.document;
 				const text = document.getText();
+
+				// Get the current cursor position
 				const cursorPosition = editor.selection.active;
-				const offset = document.offsetAt(cursorPosition);
+				var offset = document.offsetAt(cursorPosition);
+				// Move offset to the next new line, or the end of the document if no new line is found
+				const nextNewLine = text.indexOf('\n', offset);
+				if (nextNewLine !== -1) {
+					offset = nextNewLine + 1;
+				}
+				else {
+					offset = text.length;
+				}
 
 				// Split text at the cursor position
 				const textBeforeCursor = text.substring(0, offset);
+				// console.log('Text up to this line', textBeforeCursor);
 
 				// Call FireworksAI API
-				const completion = await getFireworksCompletion(
+				const completion = await lib.getCompletion(
 					textBeforeCursor,
 					modelName,
 					maxTokens,
 					apiKey
 				);
-
+				
 				if (token.isCancellationRequested) {
 					return;
 				}
 				// Insert the completion at the cursor position
 				if (completion.trim()) {
+					// Get position of offset
+					const cursorPosition = document.positionAt(offset);
+					// Insert the completion
 					await insertCompletion(editor, cursorPosition, completion);
 					// vscode.window.showInformationMessage('Completion inserted successfully!');
 				}
@@ -100,37 +114,6 @@ export function activate(context: vscode.ExtensionContext) {
 	));
 }
 
-// Function to call FireworksAI API
-async function getFireworksCompletion(
-	codePrompt: string,
-	modelName: string,
-	maxTokens: number,
-	apiKey: string
-): Promise<string> {
-	const endpoint = 'https://api.fireworks.ai/inference/v1/completions';	
-	const headers = {
-		'Content-Type': 'application/json',
-		'Authorization': `Bearer ${apiKey}`
-	};
-	const payload = {
-		model: modelName,
-		prompt: codePrompt,
-		max_tokens: maxTokens,
-		stop: ['\n\n', "```"]
-	};
-	try {
-		const response = await axios.post(endpoint, payload, { headers });
-		return response.data.choices[0].text;
-	} catch (error) {
-		// console.error('Error fetching completion:', error);
-		// throw new Error('Failed to fetch completion');
-		if (axios.isAxiosError(error) && error.response) {
-			console.error('Error response:', error.response.data);
-		}
-		throw error;
-	}
-}
-
 async function insertCompletion(
 	editor: vscode.TextEditor,
 	position: vscode.Position,
@@ -143,6 +126,7 @@ async function insertCompletion(
 	// Format and insert the completion
 	await editor.edit(editBuilder => {
 		editBuilder.insert(position, completion);
+		// editBuilder.replace(position, completion);
 	});
 
 	// Show a subtle notification that the completion was inserted
