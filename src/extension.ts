@@ -70,30 +70,42 @@ export function activate(context: vscode.ExtensionContext) {
 					// Split completion into lines
 					const lines = completion.split('\n');
 
-					const opacities = [0.1, 0.15, 0.2];
+					const opacities = [0.2, 0.3, 0.4];
 					
+					 // Create decoration types once
+					const decorationTypes = opacities.map(opacity => 
+						vscode.window.createTextEditorDecorationType({
+							backgroundColor: `rgba(255, 0, 0, ${opacity})`
+						})
+					);
+
+					var decorationRangeArrays: vscode.Range[][] = [[], [], []];
+
 					// Insert each line with a different shade of red
 					for (let i = 0; i < lines.length; i++) {
 						console.log(JSON.stringify(lines[i]));
-						const opacity = opacities[i % opacities.length];
-						console.log(`Opacity: ${opacity}`);
-						const decoration = vscode.window.createTextEditorDecorationType({
-							backgroundColor: `rgba(255, 0, 0, ${opacity})`
-						});
 						
 						await editor.edit(editBuilder => {
-							// const pos = lineStartPosition.translate(i, 0);
 							editBuilder.insert(lineStartPosition, i === 0 ? lines[i] : '\n' + lines[i]);
 						});
 						
 						// The range should be from the cursor position to the end of the line
 						const lineOffset = document.lineAt(lineStartPosition).range.end;
 						const range = new vscode.Range(lineStartPosition, lineOffset);
-						editor.setDecorations(decoration, [range]);
+						decorationRangeArrays[i % decorationTypes.length].push(range);
 						
 						// Update the lineStartPosition to the beginning of the next line
 						lineStartPosition = new vscode.Position(lineStartPosition.line + 1, 0);
 					}
+
+					// Apply the decorations
+					for (let i = 0; i < decorationTypes.length; i++) {
+						editor.setDecorations(decorationTypes[i], decorationRangeArrays[i]);
+					}
+
+					// Don't forget to dispose of the decoration types when they're no longer needed
+					// decorationTypes.forEach(d => d.dispose());
+
 					vscode.window.showInformationMessage('Completion inserted successfully!');
 				}
 				else {
