@@ -17,13 +17,13 @@ async function getCompletion(
 		model: modelID,
 		prompt: prompt,
 		max_tokens: maxTokens,
-		stop: ["\n\n", "```"],
+		// stop: ["\n\n\n", "```"],
         temperature: 0.0,
         logprobs: 5,
 	};
 	try {
 		const response = await axios.post(endpoint, payload, { headers });
-        console.log(response);
+        // console.log(response);
 		return response.data.choices[0].text;
 	} catch (error) {
 		if (axios.isAxiosError(error) && error.response) {

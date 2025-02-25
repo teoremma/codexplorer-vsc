@@ -9,15 +9,6 @@ import * as lib from './lib';
 export function activate(context: vscode.ExtensionContext) {
 	console.log('Clonepilot extension is now active');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let helloWorldCommand = vscode.commands.registerCommand('clonepilot.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from clonepilot!');
-	});
-
 	// Command that trigers the code completion
 	const getCompletionCommand = vscode.commands.registerCommand('clonepilot.getCompletion', async () => {
 		const editor = vscode.window.activeTextEditor;
@@ -53,41 +44,57 @@ export function activate(context: vscode.ExtensionContext) {
 				// Get current document content
 				const document = editor.document;
 				const text = document.getText();
-
-				// Get the current cursor position
-				const cursorPosition = editor.selection.active;
-				var offset = document.offsetAt(cursorPosition);
-				// Move offset to the next new line, or the end of the document if no new line is found
-				const nextNewLine = text.indexOf('\n', offset);
-				if (nextNewLine !== -1) {
-					offset = nextNewLine + 1;
-				}
-				else {
-					offset = text.length;
-				}
-
-				// Split text at the cursor position
-				const textBeforeCursor = text.substring(0, offset);
-				// console.log('Text up to this line', textBeforeCursor);
+				console.log('Current document content:');
+				console.log(JSON.stringify(text));
 
 				// Call FireworksAI API
 				const completion = await lib.getCompletion(
-					textBeforeCursor,
+					text,
 					modelName,
 					maxTokens,
 					apiKey
 				);
+
+				console.log('Completion received:');
+				console.log(JSON.stringify(completion));
 				
 				if (token.isCancellationRequested) {
 					return;
 				}
 				// Insert the completion at the cursor position
 				if (completion.trim()) {
-					// Get position of offset
-					const cursorPosition = document.positionAt(offset);
-					// Insert the completion
-					await insertCompletion(editor, cursorPosition, completion);
-					// vscode.window.showInformationMessage('Completion inserted successfully!');
+					// Insert the completion at the end of the document
+					// var lineStartPosition = new vscode.Position(document.lineCount + 1, 0);
+					var lineStartPosition = document.positionAt(text.length);
+
+					// Split completion into lines
+					const lines = completion.split('\n');
+
+					const opacities = [0.1, 0.15, 0.2];
+					
+					// Insert each line with a different shade of red
+					for (let i = 0; i < lines.length; i++) {
+						console.log(JSON.stringify(lines[i]));
+						const opacity = opacities[i % opacities.length];
+						console.log(`Opacity: ${opacity}`);
+						const decoration = vscode.window.createTextEditorDecorationType({
+							backgroundColor: `rgba(255, 0, 0, ${opacity})`
+						});
+						
+						await editor.edit(editBuilder => {
+							// const pos = lineStartPosition.translate(i, 0);
+							editBuilder.insert(lineStartPosition, i === 0 ? lines[i] : '\n' + lines[i]);
+						});
+						
+						// The range should be from the cursor position to the end of the line
+						const lineOffset = document.lineAt(lineStartPosition).range.end;
+						const range = new vscode.Range(lineStartPosition, lineOffset);
+						editor.setDecorations(decoration, [range]);
+						
+						// Update the lineStartPosition to the beginning of the next line
+						lineStartPosition = new vscode.Position(lineStartPosition.line + 1, 0);
+					}
+					vscode.window.showInformationMessage('Completion inserted successfully!');
 				}
 				else {
 					vscode.window.showInformationMessage('No completion received.');
@@ -103,7 +110,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(helloWorldCommand);
 	context.subscriptions.push(getCompletionCommand);
 
 	// Register the config command
@@ -126,7 +132,6 @@ async function insertCompletion(
 	// Format and insert the completion
 	await editor.edit(editBuilder => {
 		editBuilder.insert(position, completion);
-		// editBuilder.replace(position, completion);
 	});
 
 	// Show a subtle notification that the completion was inserted
