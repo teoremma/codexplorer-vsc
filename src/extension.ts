@@ -7,154 +7,154 @@ import * as lib from './lib';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Clonepilot extension is now active');
+    console.log('Clonepilot extension is now active');
 
-	// Command that trigers the code completion
-	const getCompletionCommand = vscode.commands.registerCommand('clonepilot.getCompletion', async () => {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			vscode.window.showErrorMessage('No active text editor found.');
-			return;
-		}
+    // Command that trigers the code completion
+    const getCompletionCommand = vscode.commands.registerCommand('clonepilot.getCompletion', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('No active text editor found.');
+            return;
+        }
 
-		const config = vscode.workspace.getConfiguration('clonepilot');
-		const apiKey = config.get<string>('apiKey');
-		if (!apiKey) {
-			vscode.window.showErrorMessage('Please set your FireworksAI API key in the settings.');
-			return;
-		}
-		const modelName = config.get<string>('modelID') as string;
-		if (!modelName) {
-			vscode.window.showErrorMessage('Please set the model name in the settings.');
-			return;
-		}
-		const maxTokens = config.get<number>('maxTokens') as number;
-		if (!maxTokens) {
-			vscode.window.showErrorMessage('Please set the max tokens in the settings.');
-			return;
-		}
+        const config = vscode.workspace.getConfiguration('clonepilot');
+        const apiKey = config.get<string>('apiKey');
+        if (!apiKey) {
+            vscode.window.showErrorMessage('Please set your FireworksAI API key in the settings.');
+            return;
+        }
+        const modelName = config.get<string>('modelID') as string;
+        if (!modelName) {
+            vscode.window.showErrorMessage('Please set the model name in the settings.');
+            return;
+        }
+        const maxTokens = config.get<number>('maxTokens') as number;
+        if (!maxTokens) {
+            vscode.window.showErrorMessage('Please set the max tokens in the settings.');
+            return;
+        }
 
-		try {
-			// Show loading indicator
-			vscode.window.withProgress({
-				location: vscode.ProgressLocation.Notification,
-				title: 'Fetching completion...',
-				cancellable: false
-			}, async (progress, token) => {
-				// Get current document content
-				const document = editor.document;
-				const text = document.getText();
-				console.log('Current document content:');
-				console.log(JSON.stringify(text));
+        try {
+            // Show loading indicator
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: 'Fetching completion...',
+                cancellable: false
+            }, async (progress, token) => {
+                // Get current document content
+                const document = editor.document;
+                const text = document.getText();
+                console.log('Current document content:');
+                console.log(JSON.stringify(text));
 
-				// Call FireworksAI API
-				const completion = await lib.getCompletion(
-					text,
-					modelName,
-					maxTokens,
-					apiKey
-				);
+                // Call FireworksAI API
+                const completion = await lib.getCompletion(
+                    text,
+                    modelName,
+                    maxTokens,
+                    apiKey
+                );
 
-				console.log('Completion received:');
-				console.log(JSON.stringify(completion));
-				
-				if (token.isCancellationRequested) {
-					return;
-				}
-				// Insert the completion at the cursor position
-				if (completion.trim()) {
-					// Insert the completion at the end of the document
-					// var lineStartPosition = new vscode.Position(document.lineCount + 1, 0);
-					var lineStartPosition = document.positionAt(text.length);
+                console.log('Completion received:');
+                console.log(JSON.stringify(completion));
+                
+                if (token.isCancellationRequested) {
+                    return;
+                }
+                // Insert the completion at the cursor position
+                if (completion.trim()) {
+                    // Insert the completion at the end of the document
+                    // var lineStartPosition = new vscode.Position(document.lineCount + 1, 0);
+                    var lineStartPosition = document.positionAt(text.length);
 
-					// Split completion into lines
-					const lines = completion.split('\n');
+                    // Split completion into lines
+                    const lines = completion.split('\n');
 
-					const opacities = [0.2, 0.3, 0.4];
-					
-					 // Create decoration types once
-					const decorationTypes = opacities.map(opacity => 
-						vscode.window.createTextEditorDecorationType({
-							backgroundColor: `rgba(255, 0, 0, ${opacity})`
-						})
-					);
+                    const opacities = [0.2, 0.3, 0.4];
+                    
+                     // Create decoration types once
+                    const decorationTypes = opacities.map(opacity => 
+                        vscode.window.createTextEditorDecorationType({
+                            backgroundColor: `rgba(255, 0, 0, ${opacity})`
+                        })
+                    );
 
-					var decorationRangeArrays: vscode.Range[][] = [[], [], []];
+                    var decorationRangeArrays: vscode.Range[][] = [[], [], []];
 
-					// Insert each line with a different shade of red
-					for (let i = 0; i < lines.length; i++) {
-						console.log(JSON.stringify(lines[i]));
-						
-						await editor.edit(editBuilder => {
-							editBuilder.insert(lineStartPosition, i === 0 ? lines[i] : '\n' + lines[i]);
-						});
-						
-						// The range should be from the cursor position to the end of the line
-						const lineOffset = document.lineAt(lineStartPosition).range.end;
-						const range = new vscode.Range(lineStartPosition, lineOffset);
-						decorationRangeArrays[i % decorationTypes.length].push(range);
-						
-						// Update the lineStartPosition to the beginning of the next line
-						lineStartPosition = new vscode.Position(lineStartPosition.line + 1, 0);
-					}
+                    // Insert each line with a different shade of red
+                    for (let i = 0; i < lines.length; i++) {
+                        console.log(JSON.stringify(lines[i]));
+                        
+                        await editor.edit(editBuilder => {
+                            editBuilder.insert(lineStartPosition, i === 0 ? lines[i] : '\n' + lines[i]);
+                        });
+                        
+                        // The range should be from the cursor position to the end of the line
+                        const lineOffset = document.lineAt(lineStartPosition).range.end;
+                        const range = new vscode.Range(lineStartPosition, lineOffset);
+                        decorationRangeArrays[i % decorationTypes.length].push(range);
+                        
+                        // Update the lineStartPosition to the beginning of the next line
+                        lineStartPosition = new vscode.Position(lineStartPosition.line + 1, 0);
+                    }
 
-					// Apply the decorations
-					for (let i = 0; i < decorationTypes.length; i++) {
-						editor.setDecorations(decorationTypes[i], decorationRangeArrays[i]);
-					}
+                    // Apply the decorations
+                    for (let i = 0; i < decorationTypes.length; i++) {
+                        editor.setDecorations(decorationTypes[i], decorationRangeArrays[i]);
+                    }
 
-					// Don't forget to dispose of the decoration types when they're no longer needed
-					// decorationTypes.forEach(d => d.dispose());
+                    // Don't forget to dispose of the decoration types when they're no longer needed
+                    // decorationTypes.forEach(d => d.dispose());
 
-					vscode.window.showInformationMessage('Completion inserted successfully!');
-				}
-				else {
-					vscode.window.showInformationMessage('No completion received.');
-				}
-			});
-		} catch (error) {
-			if (error instanceof Error) {
-				vscode.window.showErrorMessage(`Error: ${error.message}`);
-			}
-			else {
-				vscode.window.showErrorMessage('An unknown error occurred.');
-			}
-		}
-	});
+                    vscode.window.showInformationMessage('Completion inserted successfully!');
+                }
+                else {
+                    vscode.window.showInformationMessage('No completion received.');
+                }
+            });
+        } catch (error) {
+            if (error instanceof Error) {
+                vscode.window.showErrorMessage(`Error: ${error.message}`);
+            }
+            else {
+                vscode.window.showErrorMessage('An unknown error occurred.');
+            }
+        }
+    });
 
-	context.subscriptions.push(getCompletionCommand);
+    context.subscriptions.push(getCompletionCommand);
 
-	// Register the config command
-	context.subscriptions.push(
-		vscode.commands.registerCommand('clonepilot.configureSettings', () => {
-			vscode.commands.executeCommand('workbench.action.openSettings', 'Clonepilot');
-		}
-	));
+    // Register the config command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('clonepilot.configureSettings', () => {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'Clonepilot');
+        }
+    ));
 }
 
 async function insertCompletion(
-	editor: vscode.TextEditor,
-	position: vscode.Position,
-	completion: string
+    editor: vscode.TextEditor,
+    position: vscode.Position,
+    completion: string
 ): Promise<void> {
-	// const edit = new vscode.WorkspaceEdit();
-	// edit.insert(editor.document.uri, position, completion);
-	// await vscode.workspace.applyEdit(edit);
+    // const edit = new vscode.WorkspaceEdit();
+    // edit.insert(editor.document.uri, position, completion);
+    // await vscode.workspace.applyEdit(edit);
 
-	// Format and insert the completion
-	await editor.edit(editBuilder => {
-		editBuilder.insert(position, completion);
-	});
+    // Format and insert the completion
+    await editor.edit(editBuilder => {
+        editBuilder.insert(position, completion);
+    });
 
-	// Show a subtle notification that the completion was inserted
-	const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-	statusBarItem.text = "$(light-bulb) Completion inserted";
-	statusBarItem.show();
+    // Show a subtle notification that the completion was inserted
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    statusBarItem.text = "$(light-bulb) Completion inserted";
+    statusBarItem.show();
 
-	// Hide the notification after 2 seconds
-	setTimeout(() => {
-		statusBarItem.hide();
-	}, 2000);
+    // Hide the notification after 2 seconds
+    setTimeout(() => {
+        statusBarItem.hide();
+    }, 2000);
 }
 
 // This method is called when your extension is deactivated
