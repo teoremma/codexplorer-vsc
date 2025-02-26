@@ -17,7 +17,7 @@ async function getCompletion(
         model: modelID,
         prompt: prompt,
         max_tokens: maxTokens,
-        // stop: ["\n\n\n", "```"],
+        stop: ["\n\n\n", "```"],
         temperature: 0.0,
         logprobs: 5,
     };

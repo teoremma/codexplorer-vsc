@@ -4,11 +4,12 @@ import * as vscode from 'vscode';
 
 import * as lib from './lib';
 
-// Store information about the completion lines
+// Store information about the completion lines and their alternatives
 interface CompletionLineInfo {
     range: vscode.Range;
     text: string;
     lineNumber: number;
+    alternatives: string[]; // Array of alternative code suggestions
 }
 
 // Global variable to track completion lines
@@ -105,13 +106,21 @@ export function activate(context: vscode.ExtensionContext) {
                         // The range should be from the cursor position to the end of the line
                         const lineRange = document.lineAt(lineStartPosition).range;
                         const range = new vscode.Range(lineStartPosition, lineRange.end);
-                        decorationRangeArrays[i % decorationTypes.length].push(range);
+                        if (i % 4 === 0) {
+                            decorationRangeArrays[i % decorationTypes.length].push(range);
+                        }
+                        
+                        // Generate alternatives for this line
+                        // In a real implementation, you might call your AI service again
+                        // to get alternatives or generate them differently
+                        const alternatives = generateAlternatives(lines[i], 3);
                         
                         // Store completion line info for hover
                         completionLines.push({
                             range: range,
                             text: lines[i],
-                            lineNumber: lineStartPosition.line
+                            lineNumber: lineStartPosition.line,
+                            alternatives: alternatives
                         });
                         
                         // Update the lineStartPosition to the beginning of the next line
@@ -148,47 +157,29 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register commands for the hover options
+    // Register command to replace the current line with an alternative
     context.subscriptions.push(
-        vscode.commands.registerCommand('clonepilot.acceptLine', (lineNumber: number) => {
+        vscode.commands.registerCommand('clonepilot.useAlternative', (params: { lineNumber: number, alternativeIndex: number }) => {
             const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                vscode.window.showInformationMessage(`Line ${lineNumber + 1} accepted`);
-                // You can add additional logic here for accepting a line
-            }
+            if (!editor) return;
+
+            const { lineNumber, alternativeIndex } = params;
+            const completionLine = completionLines.find(cl => cl.lineNumber === lineNumber);
+            
+            if (!completionLine || alternativeIndex >= completionLine.alternatives.length) return;
+            
+            const alternative = completionLine.alternatives[alternativeIndex];
+            const line = editor.document.lineAt(lineNumber);
+            
+            editor.edit(editBuilder => {
+                editBuilder.replace(line.range, alternative);
+            });
+            
+            vscode.window.showInformationMessage(`Alternative code applied`);
         })
     );
 
-    context.subscriptions.push(
-        vscode.commands.registerCommand('clonepilot.rejectLine', (lineNumber: number) => {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                // Delete the line
-                editor.edit(editBuilder => {
-                    const line = editor.document.lineAt(lineNumber);
-                    editBuilder.delete(line.rangeIncludingLineBreak);
-                });
-                vscode.window.showInformationMessage(`Line ${lineNumber + 1} removed`);
-            }
-        })
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('clonepilot.modifyLine', (lineNumber: number) => {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                const line = editor.document.lineAt(lineNumber);
-                // Select the line to allow immediate modification
-                editor.selection = new vscode.Selection(
-                    lineNumber, 0,
-                    lineNumber, line.range.end.character
-                );
-                vscode.window.showInformationMessage(`Edit line ${lineNumber + 1}`);
-            }
-        })
-    );
-
-    // Register hover provider
+    // Register hover provider with syntax highlighting
     const hoverProvider = vscode.languages.registerHoverProvider('*', {
         provideHover(document, position, token) {
             // Check if the position is at the beginning of a line (first 3 characters)
@@ -205,25 +196,69 @@ export function activate(context: vscode.ExtensionContext) {
                 return undefined;
             }
             
-            // Create markdown with command links
+            // Create hover content with syntax-highlighted alternatives
             const contents = new vscode.MarkdownString();
-            contents.isTrusted = true;
-            contents.supportHtml = true;
+            contents.isTrusted = true; // Necessary for command links
             
-            contents.appendMarkdown('### Line Options\n\n');
-            contents.appendMarkdown(`- [Accept](command:clonepilot.acceptLine?${encodeURIComponent(JSON.stringify(position.line))})\n`);
-            contents.appendMarkdown(`- [Reject](command:clonepilot.rejectLine?${encodeURIComponent(JSON.stringify(position.line))})\n`);
-            contents.appendMarkdown(`- [Modify](command:clonepilot.modifyLine?${encodeURIComponent(JSON.stringify(position.line))})\n`);
-
-            // contents.appendMarkdown("`def get_existing_ports():`\n");
-            // contents.appendMarkdown("---\n")
-            // contents.appendMarkdown("`def get_current_ports():`\n");
+            // contents.appendMarkdown('### Alternative Code Options\n\n');
+            
+            // Get the language ID for syntax highlighting
+            const languageId = document.languageId;
+            
+            // Add each alternative with syntax highlighting and a command link
+            completionLine.alternatives.forEach((alternative, index) => {
+                // Add a divider between alternatives
+                if (index > 0) {
+                    contents.appendMarkdown('\n---\n\n');
+                }
+                
+                // Show the alternative with proper syntax highlighting
+                contents.appendCodeblock(alternative, languageId);
+                
+                // // Add a command link to use this alternative
+                // contents.appendMarkdown(
+                //     `[Use this alternative](command:clonepilot.useAlternative?${encodeURIComponent(JSON.stringify({
+                //         lineNumber: position.line,
+                //         alternativeIndex: index
+                //     }))})\n\n`
+                // );
+            });
             
             return new vscode.Hover(contents, line.range);
         }
     });
     
     context.subscriptions.push(hoverProvider);
+}
+
+// Function to generate alternative code lines
+// In a real implementation, you would likely call your AI service again
+function generateAlternatives(originalLine: string, count: number): string[] {
+    const alternatives: string[] = [];
+    
+    // Simple placeholder alternatives - in a real implementation, 
+    // these would come from your AI model
+    for (let i = 0; i < count; i++) {
+        // Here we're creating simple variations, but you would replace this
+        // with actual alternative completions
+        // switch(i) {
+        //     case 0:
+        //         alternatives.push(originalLine.replace(/var /g, 'const ').replace(/let /g, 'const '));
+        //         break;
+        //     case 1:
+        //         alternatives.push(originalLine.includes('//') ? originalLine : `${originalLine} // Alternative implementation`);
+        //         break;
+        //     case 2:
+        //         // Add some whitespace differences or other minor variations
+        //         alternatives.push(originalLine.replace(/\s+/g, ' ').trim());
+        //         break;
+        //     default:
+        //         alternatives.push(`// Alternative ${i+1}: ${originalLine}`);
+        // }
+        alternatives.push(originalLine + ` # Alternative ${i + 1}`);
+    }
+    
+    return alternatives;
 }
 
 async function insertCompletion(
