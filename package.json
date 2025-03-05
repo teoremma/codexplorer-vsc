@@ -18,8 +18,12 @@
         "title": "Clonepilot: Get Code Completion"
       },
       {
-        "command": "clonepilot.configureSettings",
-        "title": "Clonepilot: Configure Settings"
+        "command": "clonepilot.requestAlternatives",
+        "title": "Clonepilot: Request Alternatives"
+      },
+      {
+        "command": "clonepilot.useAlternative",
+        "title": "Clonepilot: Use Alternative"
       }
     ],
     "keybindings": [
