@@ -92,8 +92,25 @@ export function activate(context: vscode.ExtensionContext) {
                             backgroundColor: `rgba(255, 0, 0, ${opacity})`
                         })
                     );
+                    
+                    // Create a function to generate SVG data URIs for digits
+                    function createDigitSvg(digit: number): vscode.Uri {
+                        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                            <text x="8" y="12" font-family="Fira Code" font-size="10" fill="#db0019" 
+                                text-anchor="middle">${digit}</text>
+                        </svg>`;
+                        
+                        return vscode.Uri.parse(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
+                    }
+
+                    // Cache SVG URIs for digits 1-9
+                    const digitIcons: vscode.Uri[] = [];
+                    for (let i = 1; i <= 9; i++) {
+                        digitIcons[i] = createDigitSvg(i);
+                    }
 
                     var decorationRangeArrays: vscode.Range[][] = [[], [], []];
+                    const alternativeGutterDecorations: {[key: number]: vscode.Range[]} = {};
 
                     // Insert each line with a different shade of red
                     for (let i = 0; i < lines.length; i++) {
@@ -114,9 +131,16 @@ export function activate(context: vscode.ExtensionContext) {
                             decorationRangeArrays[randomIndex].push(range);
                             const numAlternatives = Math.floor(Math.random() * 6) + 1;
                             alternatives = generateAlternatives(lines[i], numAlternatives);
+                            
+                            // Add gutter icon for alternatives count
+                            if (numAlternatives > 0 && numAlternatives <= 9) {
+                                if (!alternativeGutterDecorations[numAlternatives]) {
+                                    alternativeGutterDecorations[numAlternatives] = [];
+                                }
+                                alternativeGutterDecorations[numAlternatives].push(range);
+                            }
                         }
                         else {
-                            // decorationRangeArrays[i % decorationTypes.length].push(range);
                             alternatives = [];
                         }
                         
@@ -135,6 +159,17 @@ export function activate(context: vscode.ExtensionContext) {
                     // Apply the decorations
                     for (let i = 0; i < decorationTypes.length; i++) {
                         editor.setDecorations(decorationTypes[i], decorationRangeArrays[i]);
+                    }
+                    
+                    // Apply gutter decorations for alternatives count
+                    for (let numAlts = 1; numAlts <= 9; numAlts++) {
+                        if (alternativeGutterDecorations[numAlts] && alternativeGutterDecorations[numAlts].length > 0) {
+                            const gutterDecorationType = vscode.window.createTextEditorDecorationType({
+                                gutterIconPath: digitIcons[numAlts],
+                                gutterIconSize: 'contain'
+                            });
+                            editor.setDecorations(gutterDecorationType, alternativeGutterDecorations[numAlts]);
+                        }
                     }
 
                     console.log(completionLines);
