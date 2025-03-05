@@ -32,6 +32,12 @@
         "key": "ctrl+alt+l",
         "mac": "cmd+alt+l",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "clonepilot.requestAlternatives",
+        "key": "ctrl+alt+;",
+        "mac": "cmd+alt+;",
+        "when": "editorTextFocus"
       }
     ],
     "menus": {
