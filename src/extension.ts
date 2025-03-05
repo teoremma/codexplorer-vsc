@@ -112,7 +112,8 @@ export function activate(context: vscode.ExtensionContext) {
                             // Get a random decoration type
                             const randomIndex = Math.floor(Math.random() * decorationTypes.length);
                             decorationRangeArrays[randomIndex].push(range);
-                            alternatives = generateAlternatives(lines[i], 3);
+                            const numAlternatives = Math.floor(Math.random() * 6) + 1;
+                            alternatives = generateAlternatives(lines[i], numAlternatives);
                         }
                         else {
                             // decorationRangeArrays[i % decorationTypes.length].push(range);
@@ -180,6 +181,12 @@ export function activate(context: vscode.ExtensionContext) {
             opacity: '0.5' // Reduced opacity for non-focused lines
         });
 
+        // Create a decoration type for the current cursor position
+        const currentLineDecorationType = vscode.window.createTextEditorDecorationType({
+            border: '2px solid rgb(181, 181, 181)',
+            borderRadius: '3px'
+        });
+
         // Insert alternatives below the current line
         let insertPosition = new vscode.Position(currentLineNumber + 1, 0);
 
@@ -221,8 +228,18 @@ export function activate(context: vscode.ExtensionContext) {
         const cleanupDisposable = vscode.window.onDidChangeTextEditorSelection(() => {
             // Check if cursor moved away from alternatives area
             const newPosition = editor.selection.active;
-            const isInAlternativesArea = (newPosition.line >= startLine && newPosition.line <= endLine) || 
-                                         newPosition.line === currentLineNumber;
+            const newLine = newPosition.line;
+            const isInAlternativesArea = (newLine >= startLine && newLine <= endLine) || 
+                                         newLine === currentLineNumber;
+            
+            // If cursor is in alternatives area, add border to the current line
+            if (isInAlternativesArea && newLine >= startLine && newLine <= endLine) {
+                const currentLineRange = editor.document.lineAt(newLine).range;
+                editor.setDecorations(currentLineDecorationType, [currentLineRange]);
+            } else {
+                // Clear the current line decoration
+                editor.setDecorations(currentLineDecorationType, []);
+            }
             
             if (!isInAlternativesArea) {
                 // Clean up alternatives and decorations
@@ -237,6 +254,7 @@ export function activate(context: vscode.ExtensionContext) {
                 // Dispose decorations
                 alternativeDecorationType.dispose();
                 dimmedDecorationType.dispose();
+                currentLineDecorationType.dispose();
                 
                 // Dispose this event listener
                 cleanupDisposable.dispose();
@@ -244,7 +262,7 @@ export function activate(context: vscode.ExtensionContext) {
         });
     });
 
-    context.subscriptions.push(getCompletionCommand);
+    context.subscriptions.push(getCompletionCommand, requestAlternativesCommand);
 
     // Register the config command
     context.subscriptions.push(
