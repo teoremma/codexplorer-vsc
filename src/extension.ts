@@ -55,8 +55,6 @@ export function activate(context: vscode.ExtensionContext) {
                 // Get current document content
                 const document = editor.document;
                 const text = document.getText();
-                console.log('Current document content:');
-                console.log(JSON.stringify(text));
 
                 // Call FireworksAI API
                 const completion = await lib.getCompletion(
@@ -66,9 +64,6 @@ export function activate(context: vscode.ExtensionContext) {
                     apiKey
                 );
 
-                console.log('Completion received:');
-                console.log(JSON.stringify(completion));
-                
                 if (token.isCancellationRequested) {
                     return;
                 }
@@ -114,8 +109,6 @@ export function activate(context: vscode.ExtensionContext) {
 
                     // Insert each line with a different shade of red
                     for (let i = 0; i < lines.length; i++) {
-                        console.log(JSON.stringify(lines[i]));
-                        
                         await editor.edit(editBuilder => {
                             editBuilder.insert(lineStartPosition, i === 0 ? lines[i] : '\n' + lines[i]);
                         });
@@ -172,7 +165,6 @@ export function activate(context: vscode.ExtensionContext) {
                         }
                     }
 
-                    console.log(completionLines);
                     vscode.window.showInformationMessage('Completion inserted successfully!');
                 }
                 else {

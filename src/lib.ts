@@ -2,6 +2,12 @@ import axios from "axios";
 
 export { getCompletion };
 
+// interface ProviderCompletion {
+//     prompt: string;
+//     modelID: string;
+
+// }
+
 async function getCompletion(
     prompt: string,
     modelID: string,
