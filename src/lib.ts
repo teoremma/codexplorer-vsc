@@ -29,7 +29,8 @@ async function getCompletion(
     };
     try {
         const response = await axios.post(endpoint, payload, { headers });
-        // console.log(response);
+        console.log("Response from Fireworks AI:");
+        console.log(response);
         return response.data.choices[0].text;
     } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
