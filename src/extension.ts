@@ -1,22 +1,22 @@
 // The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
 import * as lib from './lib';
 
-// Store information about the completion lines and their alternatives
+// Update the interface to match the structure coming from lib
 interface CompletionLineInfo {
     range: vscode.Range;
     text: string;
     lineNumber: number;
-    alternatives: string[]; // Array of alternative code suggestions
+    alternatives: {
+        text: string;
+        explanation: string;
+    }[]; 
 }
 
 // Global variable to track completion lines
 let completionLines: CompletionLineInfo[] = [];
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
     console.log('Clonepilot extension is now active');
 
@@ -56,17 +56,22 @@ export function activate(context: vscode.ExtensionContext) {
                 const document = editor.document;
                 const text = document.getText();
 
-                // Call FireworksAI API
-                const completion = await lib.getCompletion(
+                // Get the full completion data including alternatives from FireworksAI
+                // const completionData = await lib.getFireworksAICompletion(
+                const completionData = await lib.getCompletionsFull(
                     text,
                     modelName,
                     maxTokens,
                     apiKey
                 );
-
+                
                 if (token.isCancellationRequested) {
                     return;
                 }
+                
+                // Get the completion text and lines data
+                const completion = completionData.completions[0].text;
+                const completionLines0 = completionData.completions[0].lines || [];
                 
                 // Clear previous completion lines
                 completionLines = [];
@@ -79,16 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
                     // Split completion into lines
                     const lines = completion.split('\n');
 
-                    const opacities = [0.2, 0.3, 0.4];
-                    
-                    // Create decoration types once
-                    const decorationTypes = opacities.map(opacity => 
-                        vscode.window.createTextEditorDecorationType({
-                            backgroundColor: `rgba(255, 0, 0, ${opacity})`
-                        })
-                    );
-                    
-                    // Create a function to generate SVG data URIs for digits
+                    // Function to create SVG data URIs for digits
                     function createDigitSvg(digit: number): vscode.Uri {
                         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
                             <text x="8" y="12" font-family="Fira Code" font-size="10" fill="#db0019" 
@@ -104,10 +100,10 @@ export function activate(context: vscode.ExtensionContext) {
                         digitIcons[i] = createDigitSvg(i);
                     }
 
-                    var decorationRangeArrays: vscode.Range[][] = [[], [], []];
-                    const alternativeGutterDecorations: {[key: number]: vscode.Range[]} = {};
+                    // Store for lines with alternatives
+                    const linesWithAltDecorations: {[key: number]: vscode.Range[]} = {};
 
-                    // Insert each line with a different shade of red
+                    // Insert each line
                     for (let i = 0; i < lines.length; i++) {
                         await editor.edit(editBuilder => {
                             editBuilder.insert(lineStartPosition, i === 0 ? lines[i] : '\n' + lines[i]);
@@ -116,25 +112,18 @@ export function activate(context: vscode.ExtensionContext) {
                         // The range should be from the cursor position to the end of the line
                         const lineRange = document.lineAt(lineStartPosition).range;
                         const range = new vscode.Range(lineStartPosition, lineRange.end);
-                        const altsProb = Math.random();
-                        let alternatives: string[];
-                        if (altsProb < 0.2) {
-                            // Get a random decoration type
-                            const randomIndex = Math.floor(Math.random() * decorationTypes.length);
-                            decorationRangeArrays[randomIndex].push(range);
-                            const numAlternatives = Math.floor(Math.random() * 6) + 1;
-                            alternatives = generateAlternatives(lines[i], numAlternatives);
-                            
-                            // Add gutter icon for alternatives count
-                            if (numAlternatives > 0 && numAlternatives <= 9) {
-                                if (!alternativeGutterDecorations[numAlternatives]) {
-                                    alternativeGutterDecorations[numAlternatives] = [];
-                                }
-                                alternativeGutterDecorations[numAlternatives].push(range);
+                        
+                        // Get alternatives for this line
+                        const lineAlternatives = (i < completionLines0.length) ? 
+                            completionLines0[i].alternatives : [];
+                        
+                        // Add gutter icon for alternatives count
+                        const numAlternatives = lineAlternatives.length;
+                        if (numAlternatives > 0 && numAlternatives <= 9) {
+                            if (!linesWithAltDecorations[numAlternatives]) {
+                                linesWithAltDecorations[numAlternatives] = [];
                             }
-                        }
-                        else {
-                            alternatives = [];
+                            linesWithAltDecorations[numAlternatives].push(range);
                         }
                         
                         // Store completion line info for hover
@@ -142,26 +131,21 @@ export function activate(context: vscode.ExtensionContext) {
                             range: range,
                             text: lines[i],
                             lineNumber: lineStartPosition.line,
-                            alternatives: alternatives
+                            alternatives: lineAlternatives
                         });
                         
                         // Update the lineStartPosition to the beginning of the next line
                         lineStartPosition = new vscode.Position(lineStartPosition.line + 1, 0);
                     }
-
-                    // Apply the decorations
-                    for (let i = 0; i < decorationTypes.length; i++) {
-                        editor.setDecorations(decorationTypes[i], decorationRangeArrays[i]);
-                    }
                     
                     // Apply gutter decorations for alternatives count
                     for (let numAlts = 1; numAlts <= 9; numAlts++) {
-                        if (alternativeGutterDecorations[numAlts] && alternativeGutterDecorations[numAlts].length > 0) {
+                        if (linesWithAltDecorations[numAlts] && linesWithAltDecorations[numAlts].length > 0) {
                             const gutterDecorationType = vscode.window.createTextEditorDecorationType({
                                 gutterIconPath: digitIcons[numAlts],
                                 gutterIconSize: 'contain'
                             });
-                            editor.setDecorations(gutterDecorationType, alternativeGutterDecorations[numAlts]);
+                            editor.setDecorations(gutterDecorationType, linesWithAltDecorations[numAlts]);
                         }
                     }
 
@@ -219,7 +203,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         await editor.edit(editBuilder => {
             currentLine.alternatives.forEach(alt => {
-                editBuilder.insert(insertPosition, alt + '\n');
+                editBuilder.insert(insertPosition, alt.text + '\n');
             });
         });
 
@@ -309,7 +293,7 @@ export function activate(context: vscode.ExtensionContext) {
             
             if (!completionLine || alternativeIndex >= completionLine.alternatives.length) return;
             
-            const alternative = completionLine.alternatives[alternativeIndex];
+            const alternative = completionLine.alternatives[alternativeIndex].text;
             const line = editor.document.lineAt(lineNumber);
             
             editor.edit(editBuilder => {
@@ -319,93 +303,6 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(`Alternative code applied`);
         })
     );
-
-    // // Register completion provider for intellisense dropdown
-    // const completionProvider = vscode.languages.registerCompletionItemProvider('*', {
-    //     provideCompletionItems(document, position, token, context) {
-    //         // Find if this is one of our completion lines
-    //         const completionLine = completionLines.find(cl => cl.lineNumber === position.line);
-    //         if (!completionLine) {
-    //             return undefined;
-    //         }
-            
-    //         const line = document.lineAt(position.line);
-            
-    //         // Create completion items for each alternative
-    //         const completionItems: vscode.CompletionItem[] = completionLine.alternatives.map((alternative, index) => {
-    //             const item = new vscode.CompletionItem(
-    //                 // `Alternative ${index + 1}`,
-    //                 // line.text + ` # Alternative ${index + 1}`,
-    //                 alternative,
-    //                 vscode.CompletionItemKind.Snippet
-    //             );
-                
-    //             // Set the text to be inserted
-    //             item.insertText = alternative;
-                
-    //             // Replace the entire line
-    //             item.range = line.range;
-                
-    //             // Add documentation with syntax highlighting
-    //             const documentation = new vscode.MarkdownString();
-    //             documentation.isTrusted = true;
-    //             documentation.appendCodeblock(alternative, document.languageId);
-                
-    //             item.documentation = documentation;
-    //             item.detail = `Alternative code suggestion ${index + 1}`;
-                
-    //             // Sort order (to ensure our items appear at the top)
-    //             item.sortText = `0${index}`;
-                
-    //             return item;
-    //         });
-            
-    //         return completionItems;
-    //     }
-    // }, ' ', '\t', '\n'); // Trigger on space, tab, or new line
-    
-    // context.subscriptions.push(completionProvider);
-    
-    // // Register command to show alternatives explicitly
-    // context.subscriptions.push(
-    //     vscode.commands.registerCommand('clonepilot.showAlternatives', () => {
-    //         const editor = vscode.window.activeTextEditor;
-    //         if (!editor) return;
-            
-    //         // Trigger intellisense at current position
-    //         vscode.commands.executeCommand('editor.action.triggerSuggest');
-    //     })
-    // );
-}
-
-// Function to generate alternative code lines
-// In a real implementation, you would likely call your AI service again
-function generateAlternatives(originalLine: string, count: number): string[] {
-    const alternatives: string[] = [];
-    
-    // Simple placeholder alternatives - in a real implementation, 
-    // these would come from your AI model
-    for (let i = 0; i < count; i++) {
-        // Here we're creating simple variations, but you would replace this
-        // with actual alternative completions
-        // switch(i) {
-        //     case 0:
-        //         alternatives.push(originalLine.replace(/var /g, 'const ').replace(/let /g, 'const '));
-        //         break;
-        //     case 1:
-        //         alternatives.push(originalLine.includes('//') ? originalLine : `${originalLine} // Alternative implementation`);
-        //         break;
-        //     case 2:
-        //         // Add some whitespace differences or other minor variations
-        //         alternatives.push(originalLine.replace(/\s+/g, ' ').trim());
-        //         break;
-        //     default:
-        //         alternatives.push(`// Alternative ${i+1}: ${originalLine}`);
-        // }
-        alternatives.push(originalLine + ` # Alternative ${i + 1}`);
-    }
-    
-    return alternatives;
 }
 
 async function insertCompletion(
