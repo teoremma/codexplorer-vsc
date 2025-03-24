@@ -72,6 +72,23 @@ export async function requestAlternatives(completionState, stageManager) {
     const startLine = lineNumber + 1;
     const endLine = startLine + (alternatives.length - 1) - 1;
     
+    // Create a decoration type for the common prefix
+    const grayedPrefixDecorationType = vscode.window.createTextEditorDecorationType({
+        opacity: '0.5',
+        color: '#888888'
+    });
+    
+    // Apply grayed out decoration to common prefixes in alternative lines
+    const commonPrefixDecorations = [];
+    for (let i = startLine; i <= endLine; i++) {
+        const prefixRange = new vscode.Range(
+            new vscode.Position(i, 0),
+            new vscode.Position(i, currentToken.range.start.character)
+        );
+        commonPrefixDecorations.push(prefixRange);
+    }
+    editor.setDecorations(grayedPrefixDecorationType, commonPrefixDecorations);
+    
     // Highlight the current token
     editor.setDecorations(alternativeDecorationType, [currentToken.range]);
     
@@ -107,6 +124,7 @@ export async function requestAlternatives(completionState, stageManager) {
             // Dispose decorations
             alternativeDecorationType.dispose();
             dimmedDecorationType.dispose();
+            grayedPrefixDecorationType.dispose();
             
             // Dispose this event listener
             cleanupDisposable.dispose();
