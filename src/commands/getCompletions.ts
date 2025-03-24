@@ -12,6 +12,8 @@ export async function getCompletions(config, completionState, stageManager) {
         return;
     }
 
+    const editorUri = editor.document.uri.toString();
+    
     try {
         // Show loading indicator
         vscode.window.withProgress({
@@ -23,7 +25,11 @@ export async function getCompletions(config, completionState, stageManager) {
             const document = editor.document;
             const text = document.getText();
 
-            // Get the full completion data including alternatives from FireworksAI
+            // Set the alternatives status to not ready and not in progress
+            completionState.setAlternativesReady(editorUri, false);
+            completionState.setAlternativesInProgress(editorUri, false);
+            
+            // Get the initial completion data from FireworksAI without alternatives
             const completionData = await lib.getCompletionsFull(
                 text,
                 config.modelName,
@@ -40,7 +46,7 @@ export async function getCompletions(config, completionState, stageManager) {
             const completionLines0 = completionData.completions[0].lines || [];
             
             // Clear previous completion lines
-            completionState.setCompletionLines(editor.document.uri.toString(), []);
+            completionState.setCompletionLines(editorUri, []);
             
             // Insert the completion at the cursor position
             if (completion.trim()) {
@@ -119,6 +125,46 @@ export async function getCompletions(config, completionState, stageManager) {
                 }
 
                 vscode.window.showInformationMessage('Completion inserted successfully!');
+
+                // Start loading alternatives in the background
+                completionState.setAlternativesInProgress(editorUri, true);
+                
+                lib.getAlternativesInBackground(
+                    completionData,
+                    config.maxTokens,
+                    config.apiKey,
+                    (result) => {
+                        // Update the completion state with alternatives
+                        const lines = completionState.getCompletionLines(editorUri);
+                        if (result.completions[0].lines) {
+                            for (let i = 0; i < lines.length && i < result.completions[0].lines.length; i++) {
+                                lines[i].alternatives = result.completions[0].lines[i].alternatives;
+                            }
+                            completionState.setCompletionLines(editorUri, lines);
+                        }
+                        
+                        // Update tokens with alternatives
+                        if (result.completions[0].steps) {
+                            const tokens = completionState.getCompletionTokens(editorUri);
+                            for (let i = 0; i < tokens.length && i < result.completions[0].steps.length; i++) {
+                                if (result.completions[0].steps[i].top_logprobs) {
+                                    tokens[i].alternatives = result.completions[0].steps[i].top_logprobs.map(lp => ({
+                                        token: lp.token,
+                                        logprob: lp.logprob
+                                    }));
+                                }
+                            }
+                            completionState.setCompletionTokens(editorUri, tokens);
+                        }
+                        
+                        // Mark alternatives as ready
+                        completionState.setAlternativesInProgress(editorUri, false);
+                        completionState.setAlternativesReady(editorUri, true);
+                        
+                        // Optionally notify the user that alternatives are ready
+                        vscode.window.showInformationMessage('Alternatives are now ready for this completion.');
+                    }
+                );
             }
             else {
                 vscode.window.showInformationMessage('No completion received.');

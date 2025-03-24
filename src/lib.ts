@@ -7,7 +7,8 @@ export {
     getCompletion,
     getCompletionsFull,
     getFireworksAICompletion,
-    fillLineAlternatives
+    fillLineAlternatives,
+    getAlternativesInBackground
  };
 
 interface SingleCompletion {
@@ -63,12 +64,25 @@ async function getCompletionsFull(
 ): Promise<ProviderCompletions> {
     const provider = "fireworksAI";
     if (provider === "fireworksAI") {
-        const completions = await getFireworksAICompletion(prompt, modelID, maxTokens, apiKey);
-        // return completions;
-        const completionsWithAlternatives = await fillLineAlternatives(completions, maxTokens, apiKey);
-        return completionsWithAlternatives;
+        // Just return the initial completion without waiting for alternatives
+        return await getFireworksAICompletion(prompt, modelID, maxTokens, apiKey);
     } else {
         throw new Error(`Unknown provider: ${provider}`);
+    }
+}
+
+// New function to get alternatives in the background
+async function getAlternativesInBackground(
+    completions: ProviderCompletions,
+    maxTokens: number,
+    apiKey: string,
+    onComplete: (result: ProviderCompletions) => void
+): Promise<void> {
+    try {
+        const result = await fillLineAlternatives(completions, maxTokens, apiKey);
+        onComplete(result);
+    } catch (error) {
+        console.error("Error generating alternatives:", error);
     }
 }
 

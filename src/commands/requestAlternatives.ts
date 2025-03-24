@@ -10,8 +10,21 @@ export async function requestAlternatives(completionState, stageManager) {
         return;
     }
 
-    const cursorPosition = editor.selection.active;
     const documentUri = editor.document.uri.toString();
+    
+    // Check if alternatives are being computed
+    if (completionState.areAlternativesInProgress(documentUri)) {
+        vscode.window.showInformationMessage('Alternatives are still being generated. Please try again in a moment.');
+        return;
+    }
+    
+    // Check if alternatives are ready
+    if (!completionState.areAlternativesReady(documentUri)) {
+        vscode.window.showInformationMessage('No alternatives available for this completion.');
+        return;
+    }
+
+    const cursorPosition = editor.selection.active;
     
     // Find the token at the current cursor position
     const currentToken = completionState.getTokenAtPosition(documentUri, cursorPosition);
