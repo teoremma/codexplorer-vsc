@@ -117,10 +117,10 @@ export async function requestAlternatives(completionState, stageManager) {
     // Highlight the current token
     editor.setDecorations(alternativeDecorationType, [currentToken.range]);
     
-    // Apply dim decoration to everything except the alternatives section
+    // Apply dim decoration to everything except the current line and alternatives section
     const dimmedRanges = [];
     for (let i = 0; i < editor.document.lineCount; i++) {
-        if (i < startLine || i > endLine) {
+        if (i !== lineNumber && (i < startLine || i > endLine)) {
             dimmedRanges.push(editor.document.lineAt(i).range);
         }
     }
