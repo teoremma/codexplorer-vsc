@@ -3,6 +3,7 @@ import * as lib from '../lib';
 import { ConfigurationService } from '../configuration';
 import { CompletionStateManager } from '../state/completionState';
 import { StageManager, Stage } from '../state/stageManager';
+import { CompletionLineInfo, CompletionTokenInfo } from '../extension';
 
 export async function getCompletions(config, completionState, stageManager) {
     const editor = vscode.window.activeTextEditor;
@@ -121,6 +122,65 @@ export async function getCompletions(config, completionState, stageManager) {
             }
             else {
                 vscode.window.showInformationMessage('No completion received.');
+            }
+
+            // Add this to the getCompletions function
+            const tokenDecorationTypes: vscode.TextEditorDecorationType[] = [];
+            const tokenDecorations: Map<number, vscode.Range[]> = new Map();
+            const completionTokens: CompletionTokenInfo[] = [];
+
+            // After inserting the completion text
+            if (completionData.completions[0].steps) {
+                const steps = completionData.completions[0].steps;
+                let currentPos = document.positionAt(text.length);
+                
+                for (const step of steps) {
+                    // Calculate token position
+                    const tokenLength = step.token.length;
+                    const tokenRange = new vscode.Range(
+                        currentPos,
+                        new vscode.Position(currentPos.line, currentPos.character + tokenLength)
+                    );
+                    
+                    // Store token information
+                    completionTokens.push({
+                        text: step.token,
+                        range: tokenRange,
+                        entropy: step.entropy || 0,
+                        alternatives: step.top_logprobs ? step.top_logprobs.map(lp => ({
+                            token: lp.token,
+                            logprob: lp.logprob
+                        })) : []
+                    });
+                    
+                    // Create decoration based on entropy level (0-5 scale)
+                    if (step.entropy > 0) {
+                        const entropyLevel = Math.min(Math.floor(step.entropy * 5), 5);
+                        if (!tokenDecorations.has(entropyLevel)) {
+                            tokenDecorations.set(entropyLevel, []);
+                        }
+                        tokenDecorations.get(entropyLevel)?.push(tokenRange);
+                    }
+                    
+                    // Update position for next token
+                    currentPos = document.positionAt(document.offsetAt(currentPos) + tokenLength);
+                }
+                
+                // Store token information in the state
+                completionState.setCompletionTokens(editor.document.uri.toString(), completionTokens);
+                
+                // Apply decorations
+                for (let level = 1; level <= 5; level++) {
+                    const opacity = level / 5;
+                    const decorationType = vscode.window.createTextEditorDecorationType({
+                        backgroundColor: `rgba(255, 0, 0, ${opacity})`,
+                        border: '1px solid rgba(255, 0, 0, 0.3)',
+                        borderRadius: '3px'
+                    });
+                    
+                    editor.setDecorations(decorationType, tokenDecorations.get(level) || []);
+                    tokenDecorationTypes.push(decorationType);
+                }
             }
         });
     } catch (error) {

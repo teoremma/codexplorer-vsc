@@ -7,13 +7,24 @@ import { getCompletions } from './commands/getCompletions';
 import { requestAlternatives } from './commands/requestAlternatives';
 import { useAlternative } from './commands/useAlternative';
 
-interface CompletionLineInfo {
+export interface CompletionLineInfo {
     range: vscode.Range;
     text: string;
     lineNumber: number;
     alternatives: {
         text: string;
         explanation: string;
+    }[];
+}
+
+export interface CompletionTokenInfo {
+    text: string;
+    range: vscode.Range;
+    entropy: number;
+    alternatives: {
+        token: string;
+        logprob: number;
+        completionPreview?: string; // The resulting completion if this token was selected
     }[];
 }
 
@@ -29,21 +40,6 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('clonepilot.requestAlternatives', () => requestAlternatives(completionState, stageManager)),
         vscode.commands.registerCommand('clonepilot.useAlternative', (params: { lineNumber: number, alternativeIndex: number }) => useAlternative(params, completionState))
     );
-
-    vscode.window.onDidChangeActiveTextEditor(editor => {
-        if (editor) {
-            const completionLines = completionState.getCompletionLines(editor.document.uri.toString());
-            // ...existing code...
-        }
-    });
-
-    vscode.workspace.onDidChangeTextDocument(event => {
-        const editor = vscode.window.activeTextEditor;
-        if (editor && event.document === editor.document) {
-            const completionLines = completionState.getCompletionLines(editor.document.uri.toString());
-            // ...existing code...
-        }
-    });
 }
 
 export function deactivate() {}

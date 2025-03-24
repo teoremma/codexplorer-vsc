@@ -108,14 +108,23 @@ async function getFireworksAICompletion(
         
         // Create steps array from logprobs data
         const steps = logprobs ? logprobs.tokens.map((token: string, index: number) => {
+            // Calculate entropy: -sum(p * log(p))
+            const topLogprobs = Object.entries(logprobs.top_logprobs[index] || {}).map(([token, logprob]) => ({
+                token,
+                logprob: logprob as number
+            })).sort((a, b) => b.logprob - a.logprob);
+            
+            const entropy = topLogprobs.reduce((sum, lp) => {
+                const prob = Math.exp(lp.logprob);
+                return sum - (prob * Math.log(prob));
+            }, 0);
+
             return {
                 text_offset: logprobs.text_offset[index],
                 token: token,
                 logprob: logprobs.token_logprobs[index],
-                top_logprobs: Object.entries(logprobs.top_logprobs[index] || {}).map(([token, logprob]) => ({
-                    token,
-                    logprob: logprob as number
-                })).sort((a, b) => b.logprob - a.logprob)
+                entropy: entropy,
+                top_logprobs: topLogprobs
             };
         }) : null;
         
