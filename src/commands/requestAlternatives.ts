@@ -52,25 +52,25 @@ export async function requestAlternatives(completionState, stageManager) {
     const lineNumber = currentToken.range.start.line;
     let insertPosition = new vscode.Position(lineNumber + 1, 0);
     
+    // Get the current line text
+    const currentLineText = editor.document.lineAt(lineNumber).text;
+    
     // Create a preview of what each alternative would generate
     await editor.edit(editBuilder => {
         alternatives.slice(1).forEach((alt, index) => {
-            const previewText = `Alternative ${index+1}: "${alt.token}" (log probability: ${alt.logprob.toFixed(2)})`;
-            editBuilder.insert(insertPosition, previewText + '\n');
-            
-            // If we have a preview of the completion, add it
-            if (alt.completionPreview) {
-                editBuilder.insert(
-                    new vscode.Position(insertPosition.line + 1, 0),
-                    '  ' + alt.completionPreview + '\n'
-                );
-            }
+            // Create the alternative line by replacing the current token with the alternative
+            const alternativeLineText = currentLineText.substring(0, currentToken.range.start.character) +
+                alt.token +
+                currentLineText.substring(currentToken.range.end.character);
+                
+            // Insert the alternative line
+            editBuilder.insert(insertPosition, alternativeLineText + '\n');
         });
     });
 
     // Calculate the range of inserted alternatives
     const startLine = lineNumber + 1;
-    const endLine = startLine + (alternatives.length - 1) * 2 - 1;
+    const endLine = startLine + (alternatives.length - 1) - 1;
     
     // Highlight the current token
     editor.setDecorations(alternativeDecorationType, [currentToken.range]);
