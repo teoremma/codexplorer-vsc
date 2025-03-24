@@ -48,6 +48,18 @@ export async function requestAlternatives(completionState, stageManager) {
         opacity: '0.5' // Reduced opacity for non-focused lines
     });
 
+    // New decoration type for alternative tokens with yellow background
+    const alternativeTokenDecorationType = vscode.window.createTextEditorDecorationType({
+        backgroundColor: 'rgba(255, 255, 0, 0.15)', // Dim yellow background
+    });
+
+    // New decoration type for selected alternative token
+    const selectedAlternativeDecorationType = vscode.window.createTextEditorDecorationType({
+        backgroundColor: 'rgba(255, 255, 0, 0.15)', // Dim yellow background
+        border: '1px solid rgba(188, 188, 188, 0.8)', // Darker border for selected alternative
+        borderRadius: '3px'
+    });
+
     // Insert alternatives below the token's line
     const lineNumber = currentToken.range.start.line;
     let insertPosition = new vscode.Position(lineNumber + 1, 0);
@@ -80,14 +92,27 @@ export async function requestAlternatives(completionState, stageManager) {
     
     // Apply grayed out decoration to common prefixes in alternative lines
     const commonPrefixDecorations = [];
+    // New: Create arrays for the alternative tokens with yellow background
+    const alternativeTokenDecorations = [];
+
     for (let i = startLine; i <= endLine; i++) {
+        // For common prefix (unchanged)
         const prefixRange = new vscode.Range(
             new vscode.Position(i, 0),
             new vscode.Position(i, currentToken.range.start.character)
         );
         commonPrefixDecorations.push(prefixRange);
+        
+        // For alternative tokens (with yellow background)
+        const tokenRange = new vscode.Range(
+            new vscode.Position(i, currentToken.range.start.character),
+            new vscode.Position(i, editor.document.lineAt(i).text.length)
+        );
+        alternativeTokenDecorations.push(tokenRange);
     }
+
     editor.setDecorations(grayedPrefixDecorationType, commonPrefixDecorations);
+    editor.setDecorations(alternativeTokenDecorationType, alternativeTokenDecorations);
     
     // Highlight the current token
     editor.setDecorations(alternativeDecorationType, [currentToken.range]);
@@ -125,9 +150,21 @@ export async function requestAlternatives(completionState, stageManager) {
             alternativeDecorationType.dispose();
             dimmedDecorationType.dispose();
             grayedPrefixDecorationType.dispose();
+            alternativeTokenDecorationType.dispose();
+            selectedAlternativeDecorationType.dispose();
             
             // Dispose this event listener
             cleanupDisposable.dispose();
+        } else {
+            // Update the selected alternative highlight
+            const selectedLine = newPosition.line;
+            const selectedRange = new vscode.Range(
+                new vscode.Position(selectedLine, currentToken.range.start.character),
+                new vscode.Position(selectedLine, editor.document.lineAt(selectedLine).text.length)
+            );
+            
+            // Apply the selected decoration
+            editor.setDecorations(selectedAlternativeDecorationType, [selectedRange]);
         }
     });
 }
