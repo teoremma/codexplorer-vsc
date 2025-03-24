@@ -228,6 +228,11 @@ export async function getCompletions(config, completionState, stageManager) {
                     tokenDecorationTypes.push(decorationType);
                 }
             }
+
+            // Add this after applying token decorations in getCompletions
+
+            // Store decoration types for later use
+            completionState.setTokenDecorationTypes(editor.document.uri.toString(), tokenDecorationTypes);
         });
     } catch (error) {
         if (error instanceof Error) {

@@ -60,6 +60,26 @@ export async function requestAlternatives(completionState, stageManager) {
         borderRadius: '3px'
     });
 
+    // Create a custom red decoration just for the current token
+    const currentTokenRedDecorationType = vscode.window.createTextEditorDecorationType({
+        backgroundColor: 'rgba(255, 0, 0, 0.3)',
+        border: '1px solid rgba(255, 0, 0, 0.3)',
+        borderRadius: '3px'
+    });
+
+    // Save the original tokens decorations by creating a snapshot
+    // This will be needed to restore them later
+    const originalTokens = completionState.getCompletionTokens(documentUri);
+    
+    // Store original token decoration state to restore later
+    completionState.storeTokenDecorationState(documentUri);
+    
+    // Apply the custom red decoration only to the current token
+    editor.setDecorations(currentTokenRedDecorationType, [currentToken.range]);
+    
+    // Clear all existing red token decorations
+    completionState.clearTokenDecorations(documentUri);
+
     // Insert alternatives below the token's line
     const lineNumber = currentToken.range.start.line;
     let insertPosition = new vscode.Position(lineNumber + 1, 0);
@@ -152,6 +172,10 @@ export async function requestAlternatives(completionState, stageManager) {
             grayedPrefixDecorationType.dispose();
             alternativeTokenDecorationType.dispose();
             selectedAlternativeDecorationType.dispose();
+            currentTokenRedDecorationType.dispose();
+            
+            // Restore the original token decorations
+            completionState.restoreTokenDecorationState(documentUri);
             
             // Dispose this event listener
             cleanupDisposable.dispose();
