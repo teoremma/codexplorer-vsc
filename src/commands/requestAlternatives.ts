@@ -24,7 +24,6 @@ export async function requestAlternatives(
     const currentTokenIdx = completionState.getTokenIndexAtPosition(documentUri, cursorPosition);
     const currenTokenRange = completionState.getCurrentTokenRanges(documentUri)[currentTokenIdx];
     console.log('currentTokenIdx:', currentTokenIdx);
-
     
     const currentCompletions = completionState.getCurrentCompletion(documentUri);
 

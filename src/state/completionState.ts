@@ -4,6 +4,7 @@ import { ProviderCompletions } from '../lib';
 
 export class CompletionStateManager {
     private static instance: CompletionStateManager;
+    private originalContent: string = "";
     private currentCompletion: ProviderCompletions = { prompt: "", modelID: "", completions: [] };
     private currentTokenRanges: vscode.Range[] = [];
 
@@ -22,6 +23,19 @@ export class CompletionStateManager {
             CompletionStateManager.instance = new CompletionStateManager();
         }
         return CompletionStateManager.instance;
+    }
+
+    // Methods for managing the original content
+    public setOriginalContent(content: string): void {
+        this.originalContent = content;
+    }
+
+    public getOriginalContent(): string {
+        return this.originalContent;
+    }
+
+    public getOriginalContentLength(): number {
+        return this.originalContent.length;
     }
 
     public setCompletionTokens(editorId: string, tokens: CompletionTokenInfo[]): void {
