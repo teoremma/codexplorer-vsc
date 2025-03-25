@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
-import { CompletionLineInfo, CompletionTokenInfo } from '../extension';
+import { CompletionTokenInfo } from '../extension';
+import { ProviderCompletions } from '../lib';
 
 export class CompletionStateManager {
     private static instance: CompletionStateManager;
-    private completionLinesByEditor: Map<string, CompletionLineInfo[]> = new Map();
+    private currentMainCompletion: ProviderCompletions | undefined;
+
     private completionTokensByEditor: Map<string, CompletionTokenInfo[]> = new Map();
     private alternativesReadyByEditor: Map<string, boolean> = new Map();
     private alternativesInProgressByEditor: Map<string, boolean> = new Map();
@@ -19,14 +21,6 @@ export class CompletionStateManager {
             CompletionStateManager.instance = new CompletionStateManager();
         }
         return CompletionStateManager.instance;
-    }
-    
-    public setCompletionLines(editorId: string, lines: CompletionLineInfo[]): void {
-        this.completionLinesByEditor.set(editorId, lines);
-    }
-    
-    public getCompletionLines(editorId: string): CompletionLineInfo[] {
-        return this.completionLinesByEditor.get(editorId) || [];
     }
 
     public setCompletionTokens(editorId: string, tokens: CompletionTokenInfo[]): void {
