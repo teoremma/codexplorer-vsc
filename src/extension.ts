@@ -27,7 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('clonepilot.getCompletion', () => getCompletions(config, completionState, stageManager)),
-        vscode.commands.registerCommand('clonepilot.requestAlternatives', () => requestAlternatives(completionState, stageManager)),
+        vscode.commands.registerCommand('clonepilot.requestAlternatives', () => requestAlternatives(config, completionState, stageManager)),
         vscode.commands.registerCommand('clonepilot.useAlternative', (params: { lineNumber: number, alternativeIndex: number }) => useAlternative(params, completionState))
     );
 }

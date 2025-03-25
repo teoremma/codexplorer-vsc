@@ -32,7 +32,7 @@ export async function getCompletions(
         }, async (progress, token) => {
             // Get current document content
             const document = editor.document;
-            const text = document.getText();
+            const originalContent = document.getText();
 
             // Set the alternatives status to not ready and not in progress
             completionState.setAlternativesReady(editorUri, false);
@@ -40,95 +40,89 @@ export async function getCompletions(
             
             // Get the initial completion data from FireworksAI without alternatives
             const completionData = await lib.getCompletionsFull(
-                text,
+                originalContent,
                 config.modelName,
                 config.maxTokens,
                 config.apiKey
             );
+
+            completionState.setCurrentCompletion(editorUri, completionData);
             
             if (token.isCancellationRequested) {
                 return;
             }
             
             // Get the completion text and lines data
-            const completion = completionData.completions[0].text;
+            const completionText = completionData.completions[0].text;
 
-            if (!completion.trim()) {
+            if (!completionText.trim()) {
                 vscode.window.showInformationMessage('No completion received.');
                 return;
             }
 
             // Insert the completion at the end of the document
-            let lineStartPosition = document.positionAt(text.length);
+            let completionStartPosition = document.positionAt(originalContent.length);
 
             // Insert the completion at the cursor position
             await editor.edit(editBuilder => {
-                editBuilder.insert(lineStartPosition, completion);
+                editBuilder.insert(completionStartPosition, completionText);
             });
-
-            // // Insert each line
-            // for (let i = 0; i < lines.length; i++) {
-            //     await editor.edit(editBuilder => {
-            //         editBuilder.insert(lineStartPosition, i === 0 ? lines[i] : '\n' + lines[i]);
-            //     });
-                
-            //     // The range should be from the cursor position to the end of the line
-            //     const lineRange = document.lineAt(lineStartPosition).range;
-            //     const range = new vscode.Range(lineStartPosition, lineRange.end);
-                
-            //     // Update the lineStartPosition to the beginning of the next line
-            //     lineStartPosition = new vscode.Position(lineStartPosition.line + 1, 0);
-            // }
 
             vscode.window.showInformationMessage('Completion inserted successfully!');
 
-            // Start loading alternatives in the background
-            completionState.setAlternativesInProgress(editorUri, true);
+            // // Start loading alternatives in the background
+            // completionState.setAlternativesInProgress(editorUri, true);
                 
-            lib.getAlternativesInBackground(
-                completionData,
-                config.maxTokens,
-                config.apiKey,
-                (result) => {
-                    // Update tokens with alternatives
-                    if (result.completions[0].steps) {
-                        const tokens = completionState.getCompletionTokens(editorUri);
-                        for (let i = 0; i < tokens.length && i < result.completions[0].steps.length; i++) {
-                            if (result.completions[0].steps[i].top_logprobs) {
-                                tokens[i].alternatives = result.completions[0].steps[i].top_logprobs.map(lp => ({
-                                    token: lp.token,
-                                    logprob: lp.logprob
-                                }));
-                            }
-                        }
-                        completionState.setCompletionTokens(editorUri, tokens);
-                    }
+            // lib.getAlternativesInBackground(
+            //     completionData,
+            //     config.maxTokens,
+            //     config.apiKey,
+            //     (result) => {
+            //         // Update tokens with alternatives
+            //         if (result.completions[0].steps) {
+            //             const tokens = completionState.getCompletionTokens(editorUri);
+            //             for (let i = 0; i < tokens.length && i < result.completions[0].steps.length; i++) {
+            //                 if (result.completions[0].steps[i].top_logprobs) {
+            //                     tokens[i].alternatives = result.completions[0].steps[i].top_logprobs.map(lp => ({
+            //                         token: lp.token,
+            //                         logprob: lp.logprob
+            //                     }));
+            //                 }
+            //             }
+            //             completionState.setCompletionTokens(editorUri, tokens);
+            //         }
                     
-                    // Mark alternatives as ready
-                    completionState.setAlternativesInProgress(editorUri, false);
-                    completionState.setAlternativesReady(editorUri, true);
+            //         // Mark alternatives as ready
+            //         completionState.setAlternativesInProgress(editorUri, false);
+            //         completionState.setAlternativesReady(editorUri, true);
                     
-                    // Optionally notify the user that alternatives are ready
-                    vscode.window.showInformationMessage('Alternatives are now ready for this completion.');
-                }
-            );
+            //         // Optionally notify the user that alternatives are ready
+            //         vscode.window.showInformationMessage('Alternatives are now ready for this completion.');
+            //     }
+            // );
+
+            completionState.setAlternativesReady(editorUri, true);
             
             // Add this to the getCompletions function
             const tokenDecorationTypes: vscode.TextEditorDecorationType[] = [];
             const tokenDecorations: Map<number, vscode.Range[]> = new Map();
             const completionTokens: CompletionTokenInfo[] = [];
+            const tokenRanges: vscode.Range[] = [];
 
             // After inserting the completion text
             if (completionData.completions[0].steps) {
                 const steps = completionData.completions[0].steps;
-                let currentPos = document.positionAt(text.length);
+                // Start iterating from the end of the original content
+                // which is the start of the completion text
+                let currentPos = document.positionAt(originalContent.length);
                 
                 for (const step of steps) {
                     // Calculate token position
                     const tokenLength = step.token.length;
+                    const tokenEndPos = document.positionAt(document.offsetAt(currentPos) + tokenLength);
                     const tokenRange = new vscode.Range(
                         currentPos,
-                        new vscode.Position(currentPos.line, currentPos.character + tokenLength)
+                        tokenEndPos
                     );
                     
                     // Store token information
@@ -141,6 +135,9 @@ export async function getCompletions(
                             logprob: lp.logprob
                         })) : []
                     });
+
+                    // Store token range for decoration
+                    tokenRanges.push(tokenRange);
                     
                     // Create decoration based on entropy level (0-5 scale)
                     if (step.entropy > 0) {
@@ -152,11 +149,12 @@ export async function getCompletions(
                     }
                     
                     // Update position for next token
-                    currentPos = document.positionAt(document.offsetAt(currentPos) + tokenLength);
+                    currentPos = tokenEndPos;
                 }
                 
                 // Store token information in the state
                 completionState.setCompletionTokens(editor.document.uri.toString(), completionTokens);
+                completionState.setCurrentTokenRanges(editor.document.uri.toString(), tokenRanges);
                 
                 // Apply decorations
                 for (let level = 1; level <= 5; level++) {

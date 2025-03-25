@@ -4,7 +4,8 @@ import { ProviderCompletions } from '../lib';
 
 export class CompletionStateManager {
     private static instance: CompletionStateManager;
-    private currentMainCompletion: ProviderCompletions | undefined;
+    private currentCompletion: ProviderCompletions | undefined;
+    private currentTokenRanges: vscode.Range[] = [];
 
     private completionTokensByEditor: Map<string, CompletionTokenInfo[]> = new Map();
     private alternativesReadyByEditor: Map<string, boolean> = new Map();
@@ -29,6 +30,29 @@ export class CompletionStateManager {
     
     public getCompletionTokens(editorId: string): CompletionTokenInfo[] {
         return this.completionTokensByEditor.get(editorId) || [];
+    }
+
+    public setCurrentCompletion(editorId: string, completion: ProviderCompletions): void {
+        this.currentCompletion = completion;
+    }
+
+    public getCurrentCompletion(editorId: string): ProviderCompletions | undefined {
+        return this.currentCompletion;
+    }
+
+    public setCurrentTokenRanges(editorId: string, ranges: vscode.Range[]): void {
+        this.currentTokenRanges = ranges;
+    }
+
+    public getCurrentTokenRanges(editorId: string): vscode.Range[] {
+        return this.currentTokenRanges;
+    }
+
+    public getTokenIndexAtPosition(editorId: string, position: vscode.Position): number {
+        // return this.getCompletionTokens(editorId).findIndex(token =>
+        //     token.range.contains(position));
+        return this.getCurrentTokenRanges(editorId).findIndex(range =>
+            range.contains(position));
     }
 
     public getTokenAtPosition(editorId: string, position: vscode.Position): CompletionTokenInfo | undefined {

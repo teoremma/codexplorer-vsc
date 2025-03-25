@@ -62,7 +62,8 @@
           "default": "accounts/fireworks/models/llama-v3p3-70b-instruct",
           "description": "The model ID to use for FireworksAI.",
           "enum": [
-            "accounts/fireworks/models/llama-v3p3-70b-instruct"
+            "accounts/fireworks/models/llama-v3p3-70b-instruct",
+            "accounts/fireworks/models/llama-v3p1-8b-instruct"
           ]
         },
         "clonepilot.maxTokens": {

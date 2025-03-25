@@ -2,8 +2,13 @@ import * as vscode from 'vscode';
 import { DecorationFactory } from '../ui/decorations';
 import { CompletionStateManager } from '../state/completionState';
 import { StageManager, Stage } from '../state/stageManager';
+import * as lib from '../lib';
 
-export async function requestAlternatives(completionState, stageManager) {
+export async function requestAlternatives(
+    config,
+    completionState: CompletionStateManager, 
+    stageManager: StageManager
+) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showErrorMessage('No active text editor found.');
@@ -12,30 +17,47 @@ export async function requestAlternatives(completionState, stageManager) {
 
     const documentUri = editor.document.uri.toString();
     
-    // Check if alternatives are being computed
-    if (completionState.areAlternativesInProgress(documentUri)) {
-        vscode.window.showInformationMessage('Alternatives are still being generated. Please try again in a moment.');
-        return;
-    }
+    // // Check if alternatives are being computed
+    // if (completionState.areAlternativesInProgress(documentUri)) {
+    //     vscode.window.showInformationMessage('Alternatives are still being generated. Please try again in a moment.');
+    //     return;
+    // }
     
-    // Check if alternatives are ready
-    if (!completionState.areAlternativesReady(documentUri)) {
-        vscode.window.showInformationMessage('No alternatives available for this completion.');
-        return;
-    }
+    // // Check if alternatives are ready
+    // if (!completionState.areAlternativesReady(documentUri)) {
+    //     vscode.window.showInformationMessage('No alternatives available for this completion.');
+    //     return;
+    // }
 
     const cursorPosition = editor.selection.active;
     
     // Find the token at the current cursor position
-    const currentToken = completionState.getTokenAtPosition(documentUri, cursorPosition);
+    // const currentToken = completionState.getTokenAtPosition(documentUri, cursorPosition);
+    const currentTokenIdx = completionState.getTokenIndexAtPosition(documentUri, cursorPosition);
+    const currenTokenRange = completionState.getCurrentTokenRanges(documentUri)[currentTokenIdx];
+    // const currentToken = completionState.getCompletionTokens(documentUri)[currentTokenIdx];
+    console.log('currentTokenIdx:', currentTokenIdx);
+
     
-    if (!currentToken || currentToken.alternatives.length <= 1) {
-        vscode.window.showInformationMessage('No alternatives available for this token.');
-        return;
-    }
+    // if (!currentToken || currentToken.alternatives.length <= 1) {
+    //     vscode.window.showInformationMessage('No alternatives available for this token.');
+    //     return;
+    // }
+    const currentCompletions = completionState.getCurrentCompletion(documentUri);
+
+    // Load the alternatives for the current token
+    await lib.fillAlternativesAtToken(
+        currentCompletions,
+        currentTokenIdx,
+        config.maxTokens,
+        config.apiKey
+    );
 
     // Get alternatives for the token
-    const alternatives = currentToken.alternatives;
+    const alternatives = currentCompletions?.completions[0].steps[currentTokenIdx].top_logprobs
+        .map((alt, index) => (
+            alt.completionPreview?.text
+        ));
     
     // Create decoration types
     const alternativeDecorationType = vscode.window.createTextEditorDecorationType({
@@ -75,13 +97,15 @@ export async function requestAlternatives(completionState, stageManager) {
     completionState.storeTokenDecorationState(documentUri);
     
     // Apply the custom red decoration only to the current token
-    editor.setDecorations(currentTokenRedDecorationType, [currentToken.range]);
+    // editor.setDecorations(currentTokenRedDecorationType, [currentToken.range]);
+    editor.setDecorations(currentTokenRedDecorationType, [currenTokenRange]);
     
     // Clear all existing red token decorations
     completionState.clearTokenDecorations(documentUri);
 
     // Insert alternatives below the token's line
-    const lineNumber = currentToken.range.start.line;
+    // const lineNumber = currentToken.range.start.line;
+    const lineNumber = currenTokenRange.start.line;
     let insertPosition = new vscode.Position(lineNumber + 1, 0);
     
     // Get the current line text
@@ -90,11 +114,12 @@ export async function requestAlternatives(completionState, stageManager) {
     // Create a preview of what each alternative would generate
     await editor.edit(editBuilder => {
         alternatives.slice(1).forEach((alt, index) => {
+        // alternatives.forEach((alt, index) => {
             // Create the alternative line by replacing the current token with the alternative
-            const alternativeLineText = currentLineText.substring(0, currentToken.range.start.character) +
-                alt.token +
-                currentLineText.substring(currentToken.range.end.character);
-                
+            // const alternativeLineText = currentLineText.substring(0, currentToken.range.start.character) +
+            //     alt;
+            const alternativeLineText = currentLineText.substring(0, currenTokenRange.start.character) + alt;
+
             // Insert the alternative line
             editBuilder.insert(insertPosition, alternativeLineText + '\n');
         });
@@ -119,13 +144,15 @@ export async function requestAlternatives(completionState, stageManager) {
         // For common prefix (unchanged)
         const prefixRange = new vscode.Range(
             new vscode.Position(i, 0),
-            new vscode.Position(i, currentToken.range.start.character)
+            // new vscode.Position(i, currentToken.range.start.character)
+            new vscode.Position(i, currenTokenRange.start.character) 
         );
         commonPrefixDecorations.push(prefixRange);
         
         // For alternative tokens (with yellow background)
         const tokenRange = new vscode.Range(
-            new vscode.Position(i, currentToken.range.start.character),
+            // new vscode.Position(i, currentToken.range.start.character),
+            new vscode.Position(i, currenTokenRange.start.character), 
             new vscode.Position(i, editor.document.lineAt(i).text.length)
         );
         alternativeTokenDecorations.push(tokenRange);
@@ -135,7 +162,8 @@ export async function requestAlternatives(completionState, stageManager) {
     editor.setDecorations(alternativeTokenDecorationType, alternativeTokenDecorations);
     
     // Highlight the current token
-    editor.setDecorations(alternativeDecorationType, [currentToken.range]);
+    // editor.setDecorations(alternativeDecorationType, [currentToken.range]);
+    editor.setDecorations(alternativeDecorationType, [currenTokenRange]);
     
     // Apply dim decoration to everything except the current line and alternatives section
     const dimmedRanges = [];
@@ -183,7 +211,8 @@ export async function requestAlternatives(completionState, stageManager) {
             // Update the selected alternative highlight
             const selectedLine = newPosition.line;
             const selectedRange = new vscode.Range(
-                new vscode.Position(selectedLine, currentToken.range.start.character),
+                // new vscode.Position(selectedLine, currentToken.range.start.character),
+                new vscode.Position(selectedLine, currenTokenRange.start.character),
                 new vscode.Position(selectedLine, editor.document.lineAt(selectedLine).text.length)
             );
             
