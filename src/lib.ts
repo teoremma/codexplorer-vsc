@@ -1,62 +1,47 @@
 import axios from "axios";
-import { error } from "console";
+import { error, log } from "console";
 
-export { 
-    ProviderCompletions,
-    SingleCompletion,
-    getCompletion,
-    getCompletionsFull,
-    getFireworksAICompletion,
-    fillLineAlternatives,
-    getAlternativesInBackground
- };
+// export { 
+//     ProviderCompletions,
+//     SingleCompletion,
+//     // getCompletionOld as getCompletion,
+//     getCompletionsFull,
+//     getFireworksAICompletion,
+//     fillLineAlternatives,
+//     getAlternativesInBackground
+//  };
 
-interface SingleCompletion {
+export interface CompletionPreview {
     text: string;
-    steps: {
-        text_offset: number;
-        token: string;
-        logprob: number;
-        top_logprobs: {
-            token: string;
-            logprob: number;
-        }[];
-    }[] | null;
-    lines: {
-        text: string;
-        alternatives: {
-            text: string;
-            explanation: string;
-        }[];
-    }[] | null;
+    explanation: string;
+}
+
+export interface AlternativeTokenInfo {
+    token: string;
+    logprob: number;
+    completionPreview: CompletionPreview | undefined;
+}
+
+export interface StepInfo {
+    text_offset: number;
+    token: string;
+    logprob: number;
+    entropy: number;
+    top_logprobs: AlternativeTokenInfo[];
+}
+
+export interface SingleCompletion {
+    text: string;
+    steps: StepInfo[];
 }
  
-interface ProviderCompletions {
+export interface ProviderCompletions {
     prompt: string;
     modelID: string;
     completions: SingleCompletion[];
 }
 
-
-
-async function getCompletion(
-    prompt: string,
-    modelID: string,
-    maxTokens: number,
-    apiKey: string,
-): Promise<string> {
-    const provider = "fireworksAI";
-    if (provider === "fireworksAI") {
-        const completions = await getFireworksAICompletion(prompt, modelID, maxTokens, apiKey);
-        const completionsWithAlternatives = await fillLineAlternatives(completions, maxTokens, apiKey);
-        return completionsWithAlternatives.completions[0].text;
-    } else {
-        throw new Error(`Unknown provider: ${provider}`);
-    }
-
-}
-
-async function getCompletionsFull(
+export async function getCompletionsFull(
     prompt: string,
     modelID: string,
     maxTokens: number,
@@ -72,14 +57,14 @@ async function getCompletionsFull(
 }
 
 // New function to get alternatives in the background
-async function getAlternativesInBackground(
+export async function getAlternativesInBackground(
     completions: ProviderCompletions,
     maxTokens: number,
     apiKey: string,
     onComplete: (result: ProviderCompletions) => void
 ): Promise<void> {
     try {
-        const result = await fillLineAlternatives(completions, maxTokens, apiKey);
+        const result = await fillAlternatives(completions, maxTokens, apiKey);
         onComplete(result);
     } catch (error) {
         console.error("Error generating alternatives:", error);
@@ -91,8 +76,8 @@ async function getFireworksAICompletion(
     modelID: string,
     maxTokens: number,
     apiKey: string,
-    // stop: string[] = ["\n\n\n", "```"],
     stop: string[] = ["\n\n", "```"],
+    temprerature: number = 0.0,
 ): Promise<ProviderCompletions> {
     const endpoint = "https://api.fireworks.ai/inference/v1/completions";
     const headers = {
@@ -104,183 +89,144 @@ async function getFireworksAICompletion(
         model: modelID,
         prompt: prompt,
         max_tokens: maxTokens,
-        // stop: ["\n\n\n", "```"],
         stop: stop,
-        temperature: 0.0,
+        temperature: temprerature,
         logprobs: 5,
         logit_bias: {674: -100, 2: -100},
     };
 
+    let response;
+
     try {
-        const response = await axios.post(endpoint, payload, { headers });
-        
-        // Extract text from the response
-        const completionText: string = response.data.choices[0].text;
-        
-        // Extract logprobs if available
-        const logprobs = response.data.choices[0].logprobs;
-        
-        // Create steps array from logprobs data
-        const steps = logprobs ? logprobs.tokens.map((token: string, index: number) => {
-            // Calculate entropy: -sum(p * log(p))
-            const topLogprobs = Object.entries(logprobs.top_logprobs[index] || {}).map(([token, logprob]) => ({
-                token,
-                logprob: logprob as number
-            })).sort((a, b) => b.logprob - a.logprob);
-            
-            const entropy = topLogprobs.reduce((sum, lp) => {
-                const prob = Math.exp(lp.logprob);
-                return sum - (prob * Math.log(prob));
-            }, 0);
-
-            return {
-                text_offset: logprobs.text_offset[index],
-                token: token,
-                logprob: logprobs.token_logprobs[index],
-                entropy: entropy,
-                top_logprobs: topLogprobs
-            };
-        }) : null;
-        
-        // Create lines from text
-        const linesOfText = completionText.split('\n');
-        const lines = linesOfText.map(line => ({
-            text: line,
-            alternatives: [] // Placeholder for alternatives that would need domain-specific logic
-        }));
-
-        const result = {
-            prompt,
-            modelID,
-            completions: [{
-                text: completionText,
-                steps,
-                lines: lines.length > 0 ? lines : null
-            }]
-        };
-        // console.log("Result:", result);
-        return result;
+        response = await axios.post(endpoint, payload, { headers });
     } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
             console.error("Error response:", error.response.data);
         }
         throw error;
     }
+
+    // Iterate over each of the choices and transform to our format
+    const completions = response.data.choices.map((choice: any) => {
+        const completionText = choice.text;
+        const steps = choice.logprobs.tokens.map((token: string, index: number) => {
+            const text_offset = choice.logprobs.text_offset[index];
+            const logprob = choice.logprobs.token_logprobs[index];
+
+            const top_logprobs = Object.entries(choice.logprobs.top_logprobs[index] || {}).map(([token, logprob]) => 
+                ({token,logprob: logprob as number})
+            ).sort((a, b) => b.logprob - a.logprob);
+
+            const entropy = top_logprobs.reduce((sum:number, lp:any) => {
+                const prob = Math.exp(lp.logprob);
+                return sum - (prob * Math.log(prob));
+            }
+            , 0);
+
+            return {
+                text_offset: text_offset,
+                token: token,
+                logprob: logprob,
+                entropy: entropy,
+                top_logprobs: top_logprobs
+            };
+        });
+
+        return {
+            text: completionText,
+            steps,
+        };
+    });
+
+    return {
+        prompt,
+        modelID,
+        completions,
+    };
 }
 
-async function fillLineAlternatives(
+async function fillAlternatives(
     completions: ProviderCompletions,
     max_tokens: number,
     apiKey: string,
 ): Promise<ProviderCompletions> {
     // Clone the completions object to avoid modifying the original
-    const result = JSON.parse(JSON.stringify(completions));
+    // const result = JSON.parse(JSON.stringify(completions));
+    const result = completions;
     
     // Process only if we have steps with logprobs
     if (!result.completions[0].steps || result.completions[0].steps.length === 0) {
+        console.log("No steps found in completion");
         return result;
     }
     
-    // Calculate entropy for each step based on top logprobs
-    const stepsWithEntropy = result.completions[0].steps.map((step:any, index: number) => {
-        // Skip steps without top logprobs
-        if (!step.top_logprobs || step.top_logprobs.length === 0) {
-            return { ...step, entropy: 0, index };
-        }
-        
-        // Calculate entropy: -sum(p * log(p))
-        const entropy = step.top_logprobs.reduce((sum:number, lp:any) => {
-            const prob = Math.exp(lp.logprob);
-            return sum - (prob * Math.log(prob));
-        }, 0);
-        
-        return { ...step, entropy, index };
-    });
+    const n_top_steps = 5;
 
-    
-    // Sort by entropy and take top 5
-    const topEntropySteps = stepsWithEntropy
-        .filter((step: any) => step.top_logprobs && step.top_logprobs.length > 1)
-        .sort((a: any, b: any) => b.entropy - a.entropy)
-        .slice(0, 5);
+    // Get the indices of the top n steps with the highest entropy
+    const topEntropyStepsIndices = result.completions[0].steps
+        .map((step: StepInfo, index: number) => ({ step, step_idx: index }))
+        .filter(({ step }) => step.top_logprobs && step.top_logprobs.length > 1)
+        .sort((a, b) => b.step.entropy - a.step.entropy)
+        .slice(0, n_top_steps)
+        .map(({ step_idx }) => step_idx); // Keep only the step indices for processing
 
-    console.log("Steps with entropy:", topEntropySteps);
+    console.log("Steps with highest entropy:", topEntropyStepsIndices);
 
     // return result;
     
     // For each high entropy token, generate alternatives
-    for (const step of topEntropySteps) {
+    for (const step_idx of topEntropyStepsIndices) {
         // Find which line this token belongs to
+        const step = result.completions[0].steps[step_idx];
         const tokenPosition = step.text_offset;
         const prompt = result.prompt;
-        const completionText = result.completions[0].text;
+        // const completionText = result.completions[0].text;
         const completionPrefix = result.completions[0].text.substring(0, tokenPosition);
         
-        // Find the line number for this token
-        let lineStart = completionText.lastIndexOf('\n', tokenPosition) + 1;
-        const linePrefix = completionText.substring(lineStart, tokenPosition);
-        // let lineEnd = completionText.indexOf('\n', tokenPosition);
-        // if (lineEnd === -1) lineEnd = completionText.length;
-        
-        const lineIndex = completionText.substring(0, tokenPosition).split('\n').length - 1;
-        // const currentLine = completionText.substring(lineStart, lineEnd);
-        
-        // Ensure we have a lines array and the line exists
-        if (!result.completions[0].lines) {
-            // result.completions[0].lines = [];
-            error("No lines found in completion");
-            return result; 
-        }
-        
-        if (!result.completions[0].lines[lineIndex]) {
-            // result.completions[0].lines[lineIndex] = {
-            //     text: currentLine,
-            //     alternatives: []
-            // };
-            error("Line not found in completion");
-            return result;
-        }
-        
         // Generate alternative for one of the top logprobs (not the top one)
-        if (step.top_logprobs.length > 1) {
-            const n_alternatives = Math.round(Math.exp(step.entropy));
-            console.log(`Generating ${n_alternatives} alternatives for token "${step.token}" with entropy ${step.entropy}`);
-            // console.log("Generating alternatives for token:", step.token, "with entropy:", step.entropy, "and n_alternatives:", n_alternatives);
-            for (let i = 0; i < n_alternatives; i++) {
-                const alternativeToken = step.top_logprobs[i + 1]; // Take the i+1-th best token
-            
-                // Create a new prompt that uses this alternative token
-                const alternativePrompt = prompt + completionPrefix + alternativeToken.token;
-            
-                try {
-                    // Request a new completion with the alternative token
-                    const altCompletion = await getFireworksAICompletion(
-                        alternativePrompt,
-                        result.modelID,
-                        max_tokens,
-                        apiKey,
-                        ["\n"]
-                    );
-
-                    // Extract just the first line from the alternative completion
-                    let altText = altCompletion.completions[0].text;
-                    const newlinePos = altText.indexOf('\n');
-                    if (newlinePos !== -1) {
-                        altText = altText.substring(0, newlinePos);
-                    }
-
-                    const altLine = linePrefix + alternativeToken.token + altText;
-                    console.log("Alternative line:", altLine);
-                    // Add this as an alternative for the line
-                    result.completions[0].lines[lineIndex].alternatives.push({
-                        text: altLine,
-                        explanation: `Alternative using token "${alternativeToken.token}" (logprob: ${alternativeToken.logprob.toFixed(2)})`
-                    });
-                } catch (error) {
-                    console.error(`Error generating alternative for token ${alternativeToken.token}:`, error);
-                }
-            };
+        if (step.top_logprobs.length <= 1) {
+            console.log("No other tokens found for this token:", step.token);
+            continue;
         }
+            
+        const n_alternatives = Math.min(5, Math.pow(2, step.entropy));
+
+        console.log(`Generating ${n_alternatives} alternatives for token "${step.token}" with entropy ${step.entropy}`);
+        // console.log("Generating alternatives for token:", step.token, "with entropy:", step.entropy, "and n_alternatives:", n_alternatives);
+        for (let alt_token_idx = 0; alt_token_idx < n_alternatives; alt_token_idx++) {
+            const alternativeToken = step.top_logprobs[alt_token_idx + 1]; // Take the i+1-th best token
+            
+            // Create a new prompt that uses this alternative token
+            const alternativePrompt = prompt + completionPrefix + alternativeToken.token;
+            
+            let altCompletion;
+            try {
+                // Request a new completion with the alternative token
+                altCompletion = await getFireworksAICompletion(
+                    alternativePrompt,
+                    result.modelID,
+                    max_tokens,
+                    apiKey,
+                    ["\n"]
+                );
+            } catch (error) {
+                console.error(`Error generating alternative for token ${alternativeToken.token}:`, error);
+                continue;
+            }
+
+            // Extract just the first line from the alternative completion
+            let altText = altCompletion.completions[0].text;
+            const newlinePos = altText.indexOf('\n');
+            if (newlinePos !== -1) {
+                altText = altText.substring(0, newlinePos);
+            }
+
+            // Store the completion preview in the original completion
+            step.top_logprobs[alt_token_idx + 1].completionPreview = {
+                text: altText,
+                explanation: alternativeToken.token
+            };
+        };
     }
     
     console.log("Result with alternatives:");

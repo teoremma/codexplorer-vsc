@@ -7,15 +7,15 @@ import { getCompletions } from './commands/getCompletions';
 import { requestAlternatives } from './commands/requestAlternatives';
 import { useAlternative } from './commands/useAlternative';
 
-export interface CompletionLineInfo {
-    range: vscode.Range;
-    text: string;
-    lineNumber: number;
-    alternatives: {
-        text: string;
-        explanation: string;
-    }[];
-}
+// export interface CompletionLineInfo {
+//     range: vscode.Range;
+//     text: string;
+//     lineNumber: number;
+//     alternatives: {
+//         text: string;
+//         explanation: string;
+//     }[];
+// }
 
 export interface CompletionTokenInfo {
     text: string;
