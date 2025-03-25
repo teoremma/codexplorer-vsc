@@ -216,69 +216,6 @@ export async function fillAlternativesAtToken(
     });
 }
 
-// export async function fillAlternativesAtToken(
-//     completions: ProviderCompletions,
-//     tokenIndex: number,
-//     maxTokens: number,
-//     apiKey: string,
-// ): Promise<void> {
-//     // Check that the token index is valid
-//     if (tokenIndex < 0 || tokenIndex >= completions.completions[0].steps.length) {
-//         console.error("Invalid token index:", tokenIndex);
-//         return;
-//     }
-
-//     const step = completions.completions[0].steps[tokenIndex];
-
-//     // Check if all the alternatives are already filled
-//     if (step.top_logprobs.length > 1 && step.top_logprobs[1].completionPreview) {
-//         console.log("Alternatives already filled for token:", step.token);
-//         return;
-//     }
-
-//     const tokenStr = step.token;
-//     const tokenPosition = step.text_offset;
-//     const prompt = completions.prompt;
-//     const completionText = completions.completions[0].text;
-//     const completionPrefix = completionText.substring(0, tokenPosition);
-
-//     const perplexity = Math.pow(2, step.entropy);
-//     // const n_alternatives = Math.min(5, Math.round(perplexity));
-//     const n_alternatives = 4;
-
-//     console.log(`Generating ${n_alternatives} alternatives for token "${tokenStr}" with entropy ${step.entropy}`);
-//     console.log(`Top logprobs: ${step.top_logprobs.map(lp => `${lp.token}: ${lp.logprob}`).join(", ")}`);
-//     for (let alt_token_idx = 0; alt_token_idx < n_alternatives; alt_token_idx++) {
-//         const alternativeToken = step.top_logprobs[alt_token_idx + 1]; // Take the i+1-th best token
-//         const alternativePrompt = prompt + completionPrefix + alternativeToken.token;
-
-//         let altCompletion;
-//         try {
-//             altCompletion = await getFireworksAICompletion(
-//                 alternativePrompt,
-//                 completions.modelID,
-//                 maxTokens,
-//                 apiKey,
-//                 ["\n"]
-//             );
-//         } catch (error) {
-//             console.error(`Error generating alternative for token ${alternativeToken.token}:`, error);
-//             continue;
-//         }
-
-//         let altText = altCompletion.completions[0].text;
-//         const newlinePos = altText.indexOf('\n');
-//         if (newlinePos !== -1) {
-//             altText = altText.substring(0, newlinePos);
-//         }
-
-//         step.top_logprobs[alt_token_idx + 1].completionPreview = {
-//             text: alternativeToken.token + altText,
-//             explanation: alternativeToken.token
-//         };
-//     }
-// }
-
 async function resampleAtToken(
     completions: ProviderCompletions,
     newToken: string,
