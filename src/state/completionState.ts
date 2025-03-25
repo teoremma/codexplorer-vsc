@@ -4,7 +4,7 @@ import { ProviderCompletions } from '../lib';
 
 export class CompletionStateManager {
     private static instance: CompletionStateManager;
-    private currentCompletion: ProviderCompletions | undefined;
+    private currentCompletion: ProviderCompletions = { prompt: "", modelID: "", completions: [] };
     private currentTokenRanges: vscode.Range[] = [];
 
     private completionTokensByEditor: Map<string, CompletionTokenInfo[]> = new Map();
@@ -36,7 +36,7 @@ export class CompletionStateManager {
         this.currentCompletion = completion;
     }
 
-    public getCurrentCompletion(editorId: string): ProviderCompletions | undefined {
+    public getCurrentCompletion(editorId: string): ProviderCompletions {
         return this.currentCompletion;
     }
 
@@ -152,6 +152,4 @@ export class CompletionStateManager {
             this.tokenDecorationState.delete(documentUri);
         }
     }
-
-    // More methods as needed
 }

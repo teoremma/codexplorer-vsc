@@ -1,16 +1,6 @@
 import axios from "axios";
 import { error, log } from "console";
 
-// export { 
-//     ProviderCompletions,
-//     SingleCompletion,
-//     // getCompletionOld as getCompletion,
-//     getCompletionsFull,
-//     getFireworksAICompletion,
-//     fillLineAlternatives,
-//     getAlternativesInBackground
-//  };
-
 export interface CompletionPreview {
     text: string;
     explanation: string;
@@ -150,7 +140,7 @@ export async function fillAlternativesAtToken(
     tokenIndex: number,
     maxTokens: number,
     apiKey: string,
-): void {
+): Promise<void> {
     // Check that the token index is valid
     if (tokenIndex < 0 || tokenIndex >= completions.completions[0].steps.length) {
         console.error("Invalid token index:", tokenIndex);

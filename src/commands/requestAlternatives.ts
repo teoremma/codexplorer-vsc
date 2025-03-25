@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { DecorationFactory } from '../ui/decorations';
+import { ConfigurationService } from '../configuration';
 import { CompletionStateManager } from '../state/completionState';
 import { StageManager, Stage } from '../state/stageManager';
 import * as lib from '../lib';
 
 export async function requestAlternatives(
-    config,
+    config: ReturnType<typeof ConfigurationService.getConfig>,
     completionState: CompletionStateManager, 
     stageManager: StageManager
 ) {
@@ -17,32 +18,14 @@ export async function requestAlternatives(
 
     const documentUri = editor.document.uri.toString();
     
-    // // Check if alternatives are being computed
-    // if (completionState.areAlternativesInProgress(documentUri)) {
-    //     vscode.window.showInformationMessage('Alternatives are still being generated. Please try again in a moment.');
-    //     return;
-    // }
-    
-    // // Check if alternatives are ready
-    // if (!completionState.areAlternativesReady(documentUri)) {
-    //     vscode.window.showInformationMessage('No alternatives available for this completion.');
-    //     return;
-    // }
-
     const cursorPosition = editor.selection.active;
     
     // Find the token at the current cursor position
-    // const currentToken = completionState.getTokenAtPosition(documentUri, cursorPosition);
     const currentTokenIdx = completionState.getTokenIndexAtPosition(documentUri, cursorPosition);
     const currenTokenRange = completionState.getCurrentTokenRanges(documentUri)[currentTokenIdx];
-    // const currentToken = completionState.getCompletionTokens(documentUri)[currentTokenIdx];
     console.log('currentTokenIdx:', currentTokenIdx);
 
     
-    // if (!currentToken || currentToken.alternatives.length <= 1) {
-    //     vscode.window.showInformationMessage('No alternatives available for this token.');
-    //     return;
-    // }
     const currentCompletions = completionState.getCurrentCompletion(documentUri);
 
     // Load the alternatives for the current token
@@ -97,14 +80,12 @@ export async function requestAlternatives(
     completionState.storeTokenDecorationState(documentUri);
     
     // Apply the custom red decoration only to the current token
-    // editor.setDecorations(currentTokenRedDecorationType, [currentToken.range]);
     editor.setDecorations(currentTokenRedDecorationType, [currenTokenRange]);
     
     // Clear all existing red token decorations
     completionState.clearTokenDecorations(documentUri);
 
     // Insert alternatives below the token's line
-    // const lineNumber = currentToken.range.start.line;
     const lineNumber = currenTokenRange.start.line;
     let insertPosition = new vscode.Position(lineNumber + 1, 0);
     
@@ -116,8 +97,6 @@ export async function requestAlternatives(
         alternatives.slice(1).forEach((alt, index) => {
         // alternatives.forEach((alt, index) => {
             // Create the alternative line by replacing the current token with the alternative
-            // const alternativeLineText = currentLineText.substring(0, currentToken.range.start.character) +
-            //     alt;
             const alternativeLineText = currentLineText.substring(0, currenTokenRange.start.character) + alt;
 
             // Insert the alternative line

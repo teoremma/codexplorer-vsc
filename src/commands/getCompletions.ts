@@ -6,7 +6,7 @@ import { StageManager, Stage } from '../state/stageManager';
 import { CompletionTokenInfo } from '../extension';
 
 export async function getCompletions(
-    config, 
+    config: ReturnType<typeof ConfigurationService.getConfig>, 
     completionState: CompletionStateManager, 
     stageManager: StageManager
 ) {
@@ -69,37 +69,6 @@ export async function getCompletions(
             });
 
             vscode.window.showInformationMessage('Completion inserted successfully!');
-
-            // // Start loading alternatives in the background
-            // completionState.setAlternativesInProgress(editorUri, true);
-                
-            // lib.getAlternativesInBackground(
-            //     completionData,
-            //     config.maxTokens,
-            //     config.apiKey,
-            //     (result) => {
-            //         // Update tokens with alternatives
-            //         if (result.completions[0].steps) {
-            //             const tokens = completionState.getCompletionTokens(editorUri);
-            //             for (let i = 0; i < tokens.length && i < result.completions[0].steps.length; i++) {
-            //                 if (result.completions[0].steps[i].top_logprobs) {
-            //                     tokens[i].alternatives = result.completions[0].steps[i].top_logprobs.map(lp => ({
-            //                         token: lp.token,
-            //                         logprob: lp.logprob
-            //                     }));
-            //                 }
-            //             }
-            //             completionState.setCompletionTokens(editorUri, tokens);
-            //         }
-                    
-            //         // Mark alternatives as ready
-            //         completionState.setAlternativesInProgress(editorUri, false);
-            //         completionState.setAlternativesReady(editorUri, true);
-                    
-            //         // Optionally notify the user that alternatives are ready
-            //         vscode.window.showInformationMessage('Alternatives are now ready for this completion.');
-            //     }
-            // );
 
             completionState.setAlternativesReady(editorUri, true);
             

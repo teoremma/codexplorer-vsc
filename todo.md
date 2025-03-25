@@ -1,8 +1,8 @@
 - [ ] Get working with real data
-  - [ ] Load the alternatives incrementally without latency for main query
+  - [x] Load the alternatives incrementally without latency for main query
 - [ ] Add proper logic for handling each Stage
-  - [ ] Add global Stage variable
+  - [x] Add global Stage variable
   - [ ] Restrict each command or interaction to only happen when in a particular Stage
   - [ ] Restrict movement to only within the suggestions when in Stage 2
-- [ ] Add common prefix higlighting or dimming
+- [x] Add common prefix higlighting or dimming
 - [ ] Add codelens for common operations
