@@ -1,6 +1,6 @@
-# clonepilot README
+# codexplorer README
 
-This is the README for your extension "clonepilot". After writing up a brief description, we recommend including the following sections.
+This is the README for your extension "codexplorer". After writing up a brief description, we recommend including the following sections.
 
 ## Features
 

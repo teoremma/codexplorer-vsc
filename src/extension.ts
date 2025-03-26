@@ -19,16 +19,16 @@ export interface CompletionTokenInfo {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Clonepilot extension is now active');
+    console.log('Codexplorer extension is now active');
 
     const config = ConfigurationService.getConfig();
     const completionState = CompletionStateManager.getInstance();
     const stageManager = StageManager.getInstance();
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('clonepilot.getCompletion', () => getCompletions(config, completionState, stageManager)),
-        vscode.commands.registerCommand('clonepilot.requestAlternatives', () => requestAlternatives(config, completionState, stageManager)),
-        vscode.commands.registerCommand('clonepilot.useAlternative', () => useAlternative(config, completionState, stageManager))
+        vscode.commands.registerCommand('codexplorer.getCompletion', () => getCompletions(config, completionState, stageManager)),
+        vscode.commands.registerCommand('codexplorer.requestAlternatives', () => requestAlternatives(config, completionState, stageManager)),
+        vscode.commands.registerCommand('codexplorer.useAlternative', () => useAlternative(config, completionState, stageManager))
     );
 }
 

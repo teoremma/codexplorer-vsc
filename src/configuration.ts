@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 export class ConfigurationService {
     public static getConfig() {
-        const config = vscode.workspace.getConfiguration('clonepilot');
+        const config = vscode.workspace.getConfiguration('codexplorer');
         const apiKey = config.get<string>('apiKey');
         if (!apiKey) {
             throw new Error('Please set your FireworksAI API key in the settings.');

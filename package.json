@@ -1,6 +1,6 @@
 {
-  "name": "clonepilot",
-  "displayName": "Clonepilot",
+  "name": "codexplorer",
+  "displayName": "Codexplorer",
   "description": "",
   "version": "0.0.1",
   "engines": {
@@ -14,33 +14,33 @@
   "contributes": {
     "commands": [
       {
-        "command": "clonepilot.getCompletion",
-        "title": "Clonepilot: Get Code Completion"
+        "command": "codexplorer.getCompletion",
+        "title": "Codexplorer: Get Code Completion"
       },
       {
-        "command": "clonepilot.requestAlternatives",
-        "title": "Clonepilot: Request Alternatives"
+        "command": "codexplorer.requestAlternatives",
+        "title": "Codexplorer: Request Alternatives"
       },
       {
-        "command": "clonepilot.useAlternative",
-        "title": "Clonepilot: Use Alternative"
+        "command": "codexplorer.useAlternative",
+        "title": "Codexplorer: Use Alternative"
       }
     ],
     "keybindings": [
       {
-        "command": "clonepilot.getCompletion",
+        "command": "codexplorer.getCompletion",
         "key": "ctrl+alt+l",
         "mac": "cmd+alt+l",
         "when": "editorTextFocus"
       },
       {
-        "command": "clonepilot.requestAlternatives",
+        "command": "codexplorer.requestAlternatives",
         "key": "ctrl+alt+;",
         "mac": "cmd+alt+;",
         "when": "editorTextFocus"
       },
       {
-        "command": "clonepilot.useAlternative",
+        "command": "codexplorer.useAlternative",
         "key": "ctrl+alt+'",
         "mac": "cmd+alt+'",
         "when": "editorTextFocus"
@@ -49,21 +49,21 @@
     "menus": {
       "editor/context": [
         {
-          "command": "clonepilot.getCompletion",
+          "command": "codexplorer.getCompletion",
           "when": "editorTextFocus",
           "group": "1_modification"
         }
       ]
     },
     "configuration": {
-      "title": "Clonepilot",
+      "title": "Codexplorer",
       "properties": {
-        "clonepilot.apiKey": {
+        "codexplorer.apiKey": {
           "type": "string",
           "default": "",
           "description": "The API key for FireworksAI."
         },
-        "clonepilot.modelID": {
+        "codexplorer.modelID": {
           "type": "string",
           "default": "accounts/fireworks/models/llama-v3p3-70b-instruct",
           "description": "The model ID to use for FireworksAI.",
@@ -72,7 +72,7 @@
             "accounts/fireworks/models/llama-v3p1-8b-instruct"
           ]
         },
-        "clonepilot.maxTokens": {
+        "codexplorer.maxTokens": {
           "type": "number",
           "default": 128,
           "description": "The maximum number of tokens to generate."
