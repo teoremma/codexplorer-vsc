@@ -38,6 +38,12 @@
         "key": "ctrl+alt+;",
         "mac": "cmd+alt+;",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "clonepilot.useAlternative",
+        "key": "ctrl+alt+'",
+        "mac": "cmd+alt+'",
+        "when": "editorTextFocus"
       }
     ],
     "menus": {

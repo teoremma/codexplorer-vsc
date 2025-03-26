@@ -24,6 +24,7 @@ export async function requestAlternatives(
     const currentTokenIdx = completionState.getTokenIndexAtPosition(documentUri, cursorPosition);
     const currenTokenRange = completionState.getCurrentTokenRanges(documentUri)[currentTokenIdx];
     console.log('currentTokenIdx:', currentTokenIdx);
+    completionState.setCurrentAltsTokenIndex(documentUri, currentTokenIdx);
     
     const currentCompletions = completionState.getCurrentCompletion(documentUri);
 
@@ -36,7 +37,7 @@ export async function requestAlternatives(
     );
 
     // Get alternatives for the token
-    const alternatives = currentCompletions?.completions[0].steps[currentTokenIdx].top_logprobs
+    const alternatives = currentCompletions.completions[0].steps[currentTokenIdx].top_logprobs
         .map((alt, index) => (
             alt.completionPreview?.text
         ));
@@ -71,10 +72,10 @@ export async function requestAlternatives(
         borderRadius: '3px'
     });
 
+    // const originalTokens = completionState.getCompletionTokens(documentUri);
+    
     // Save the original tokens decorations by creating a snapshot
     // This will be needed to restore them later
-    const originalTokens = completionState.getCompletionTokens(documentUri);
-    
     // Store original token decoration state to restore later
     completionState.storeTokenDecorationState(documentUri);
     
@@ -90,13 +91,13 @@ export async function requestAlternatives(
     
     // Get the current line text
     const currentLineText = editor.document.lineAt(lineNumber).text;
+    const linePrefix = currentLineText.substring(0, currenTokenRange.start.character);
     
     // Create a preview of what each alternative would generate
     await editor.edit(editBuilder => {
         alternatives.slice(1).forEach((alt, index) => {
-        // alternatives.forEach((alt, index) => {
             // Create the alternative line by replacing the current token with the alternative
-            const alternativeLineText = currentLineText.substring(0, currenTokenRange.start.character) + alt;
+            const alternativeLineText = linePrefix + alt;
 
             // Insert the alternative line
             editBuilder.insert(insertPosition, alternativeLineText + '\n');
@@ -163,6 +164,8 @@ export async function requestAlternatives(
         const isInAlternativesArea = (newLine >= startLine && newLine <= endLine);
         
         if (!isInAlternativesArea) {
+            completionState.setCurrentAltsTokenIndex(documentUri, -1);
+
             // Clean up alternatives and decorations
             editor.edit(editBuilder => {
                 const deleteRange = new vscode.Range(

@@ -7,6 +7,7 @@ export class CompletionStateManager {
     private originalContent: string = "";
     private currentCompletion: ProviderCompletions = { prompt: "", modelID: "", completions: [] };
     private currentTokenRanges: vscode.Range[] = [];
+    private currentAltsTokenIndex: number = -1;
 
     private completionTokensByEditor: Map<string, CompletionTokenInfo[]> = new Map();
     private alternativesReadyByEditor: Map<string, boolean> = new Map();
@@ -72,6 +73,14 @@ export class CompletionStateManager {
     public getTokenAtPosition(editorId: string, position: vscode.Position): CompletionTokenInfo | undefined {
         return this.getCompletionTokens(editorId).find(token => 
             token.range.contains(position));
+    }
+
+    public setCurrentAltsTokenIndex(editorId: string, index: number): void {
+        this.currentAltsTokenIndex = index;
+    }
+
+    public getCurrentAltsTokenIndex(editorId: string): number {
+        return this.currentAltsTokenIndex;
     }
     
     public setAlternativesInProgress(editorId: string, inProgress: boolean): void {

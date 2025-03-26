@@ -216,7 +216,7 @@ export async function fillAlternativesAtToken(
     });
 }
 
-async function resampleAtToken(
+export async function resampleAtToken(
     completions: ProviderCompletions,
     newToken: string,
     newTokenIndex: number,
