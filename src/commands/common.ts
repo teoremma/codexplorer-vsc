@@ -29,10 +29,8 @@ export async function updateCurrentCompletion(
     const originalContent = completionState.getOriginalContent();
     
     // Remove previous content and decorations
-    const existingTokenDecorationTypes = completionState.getTokenDecorationTypes(editorUri);
-    existingTokenDecorationTypes.forEach(decorationType => {
-        decorationType.dispose();
-    });
+    completionState.clearTokenDecorations(editorUri);
+
     await editor.edit(editBuilder => {
         editBuilder.delete(new vscode.Range(
             document.positionAt(originalContent.length),

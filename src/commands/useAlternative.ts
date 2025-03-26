@@ -21,7 +21,7 @@ export async function useAlternative(
     const currentLine = currentPosition.line;
     
     // Get the original token index and range
-    const originalTokens = completionState.getCompletionTokens(documentUri);
+    // const originalTokens = completionState.getCompletionTokens(documentUri);
     const originalTokenRanges = completionState.getCurrentTokenRanges(documentUri);
     const currentCompletions = completionState.getCurrentCompletion(documentUri);
     
@@ -89,9 +89,11 @@ export async function useAlternative(
         vscode.window.showInformationMessage(`Alternative token "${alternativeToken}" applied successfully!`);
     } catch (error) {
         console.error('Error applying alternative:', error);
-        vscode.window.showErrorMessage(`Failed to apply alternative: ${error.message}`);
+        if (error instanceof Error) {
+            vscode.window.showErrorMessage(`Failed to apply alternative: ${error.message}`);
+        }
         
-        // Restore the original token decorations as fallback
-        completionState.restoreTokenDecorationState(documentUri);
+        // // Restore the original token decorations as fallback
+        // completionState.restoreTokenDecorationState(documentUri);
     }
 }
