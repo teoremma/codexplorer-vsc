@@ -49,10 +49,10 @@ export async function updateCurrentCompletion(
     
     completionState.setAlternativesReady(editorUri, true);
                 
-    // Add this to the getCompletions function
-    const tokenDecorationTypes: vscode.TextEditorDecorationType[] = [];
-    const tokenDecorations: Map<number, vscode.Range[]> = new Map();
-    const completionTokens: CompletionTokenInfo[] = [];
+    // // Add this to the getCompletions function
+    // const tokenDecorationTypes: vscode.TextEditorDecorationType[] = [];
+    // const tokenDecorations: Map<number, vscode.Range[]> = new Map();
+    // const completionTokens: CompletionTokenInfo[] = [];
     const tokenRanges: vscode.Range[] = [];
 
     if (!completionData.completions[0].steps) {
@@ -74,58 +74,79 @@ export async function updateCurrentCompletion(
             tokenEndPos
         );
         
-        // Store token information
-        completionTokens.push({
-            text: step.token,
-            range: tokenRange,
-            entropy: step.entropy || 0,
-            alternatives: step.top_logprobs ? step.top_logprobs.map(lp => ({
-                token: lp.token,
-                logprob: lp.logprob
-            })) : []
-        });
+        // // Store token information
+        // completionTokens.push({
+        //     text: step.token,
+        //     range: tokenRange,
+        //     entropy: step.entropy || 0,
+        //     alternatives: step.top_logprobs ? step.top_logprobs.map(lp => ({
+        //         token: lp.token,
+        //         logprob: lp.logprob
+        //     })) : []
+        // });
     
         // Store token range for decoration
         tokenRanges.push(tokenRange);
         
-        // Create decoration based on entropy level (0-5 scale)
-        if (step.entropy > 0) {
-            const entropyLevel = Math.min(Math.floor(step.entropy * 5), 5);
-            if (!tokenDecorations.has(entropyLevel)) {
-                tokenDecorations.set(entropyLevel, []);
-            }
-            tokenDecorations.get(entropyLevel)?.push(tokenRange);
-        }
+        // // Create decoration based on entropy level (0-5 scale)
+        // if (step.entropy > 0) {
+        //     const entropyLevel = Math.min(Math.floor(step.entropy * 5), 5);
+        //     if (!tokenDecorations.has(entropyLevel)) {
+        //         tokenDecorations.set(entropyLevel, []);
+        //     }
+        //     tokenDecorations.get(entropyLevel)?.push(tokenRange);
+        // }
         
         // Update position for next token
         currentPos = tokenEndPos;
     }
     
     // Store token information in the state
-    completionState.setCompletionTokens(editor.document.uri.toString(), completionTokens);
+    // completionState.setCompletionTokens(editor.document.uri.toString(), completionTokens);
     completionState.setCurrentTokenRanges(editor.document.uri.toString(), tokenRanges);
+
+    setCompletionDecorations(completionState);
+
     
-    // Apply decorations
-    for (let level = 1; level <= 5; level++) {
-        const opacity = level / 5;
-        const decorationType = vscode.window.createTextEditorDecorationType({
-            backgroundColor: `rgba(255, 0, 0, ${opacity})`,
-            border: '1px solid rgba(255, 0, 0, 0.3)',
-            borderRadius: '3px'
-        });
+    // // Apply decorations
+    // for (let level = 1; level <= 5; level++) {
+    //     const opacity = level / 5;
+    //     const decorationType = vscode.window.createTextEditorDecorationType({
+    //         backgroundColor: `rgba(255, 0, 0, ${opacity})`,
+    //         border: '1px solid rgba(255, 0, 0, 0.3)',
+    //         borderRadius: '3px'
+    //     });
         
-        editor.setDecorations(decorationType, tokenDecorations.get(level) || []);
-        tokenDecorationTypes.push(decorationType);
-    }
+    //     editor.setDecorations(decorationType, tokenDecorations.get(level) || []);
+    //     tokenDecorationTypes.push(decorationType);
+    // }
     
-    // Add this after applying token decorations in getCompletions
+    // // Add this after applying token decorations in getCompletions
     
-    // Store decoration types for later use
-    completionState.setTokenDecorationTypes(editor.document.uri.toString(), tokenDecorationTypes);
+    // // Store decoration types for later use
+    // completionState.setTokenDecorationTypes(editor.document.uri.toString(), tokenDecorationTypes);
 }
 
 function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEditorDecorationType {
-    const opacity = perplexityLevel / 5; // Scale from 0 to 1 based on level
+    // If perplexityLevel is out of bounds, clamp it to 0-4
+    if (perplexityLevel < 0) {
+        perplexityLevel = 0; // Clamp to 0
+    } else if (perplexityLevel > 4) {
+        perplexityLevel = 4; // Clamp to 4
+    }
+    // If perplexityLevel is close to 0, make round it to 0
+    if (perplexityLevel < 0.5) {
+        perplexityLevel = 0; // Round to 0 for very low values to avoid too much noise in UI
+    }
+    if (perplexityLevel === 0) {
+        // Return a decoration type with no background color for 0
+        // This will effectively make it invisible in the editor
+        return vscode.window.createTextEditorDecorationType({
+            backgroundColor: 'transparent', // No background for level 0
+            border: 'none' // No border for level 0
+        });
+    }
+    let opacity = perplexityLevel / 4; // Scale from 0 to 1 based on level
     return vscode.window.createTextEditorDecorationType({
         backgroundColor: `rgba(255, 0, 0, ${opacity})`, // Red color with varying opacity
         border: '1px solid rgba(255, 0, 0, 0.3)', // Optional border for visibility
@@ -134,7 +155,7 @@ function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEdito
 }
 
 export function setCompletionDecorations(
-    completionData: lib.ProviderCompletions,
+    // completionData: lib.ProviderCompletions,
     completionState: CompletionStateManager,
 ): void {
     const editor = vscode.window.activeTextEditor;
@@ -163,9 +184,11 @@ export function setCompletionDecorations(
         // Calculate the entropy level (0-5)
         const perplexity = Math.exp(step.entropy); // Convert entropy to perplexity
         const perplexityLevel = Math.round(perplexity); // Round to nearest integer
+        // console.log(`Step ${i}: entropy = ${step.entropy}, perplexity = ${perplexity}, level = ${perplexityLevel}`);
 
         // Create a decoration type for this entropy level
-        const decorationType = createTokenEntropyDecoration(perplexityLevel);
+        // const decorationType = createTokenEntropyDecoration(perplexityLevel - 1);
+        const decorationType = createTokenEntropyDecoration(perplexity - 1);
         
         // Set the decoration for the current token range
         editor.setDecorations(decorationType, [range]);
@@ -173,4 +196,7 @@ export function setCompletionDecorations(
         // Store the decoration type for later use
         tokenEntropyDecorations.push(decorationType);
     }
+
+    // completionState.setTokenEntropyDecorations(editorUri, tokenEntropyDecorations);
+    completionState.setTokenEntropyDecorations(tokenEntropyDecorations);
 }

@@ -18,6 +18,7 @@ export class CompletionStateManager {
     private alternativesInProgressByEditor: Map<string, boolean> = new Map();
     
     // Store decoration state
+    private tokenEntropyDecorations: vscode.TextEditorDecorationType[] = []; // Used for entropy-based decorations
     private tokenDecorationState = new Map<string, any>();
     private tokenDecorationTypes = new Map<string, vscode.TextEditorDecorationType[]>();
 
@@ -113,6 +114,12 @@ export class CompletionStateManager {
         return this.tokenDecorationTypes.get(documentUri) || [];
     }
 
+    public setTokenEntropyDecorations(decorations: vscode.TextEditorDecorationType[]): void {
+        // Set the array of token entropy decorations
+        this.tokenEntropyDecorations = decorations;
+        // This allows us to manage and clear them later
+    }
+
     // Store current token decoration state for later restoration
     public storeTokenDecorationState(documentUri: string): void {
         // Store the current state of token decorations
@@ -123,6 +130,16 @@ export class CompletionStateManager {
             tokens: [...tokens],
             decorationTypes: [...decorationTypes]
         });
+    }
+
+    public clearTokenEntropyDecorations(): void {
+        // Clear all token entropy decorations
+        this.tokenEntropyDecorations.forEach(decoration => {
+            // Dispose of each decoration type to clear them
+            decoration.dispose();
+        });
+        // Reset the array
+        this.tokenEntropyDecorations = [];
     }
 
     // Clear all token decorations (except the current one)
