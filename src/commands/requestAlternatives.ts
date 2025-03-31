@@ -85,14 +85,15 @@ export async function requestAlternatives(
             // Save the original tokens decorations by creating a snapshot
             // This will be needed to restore them later
             // Store original token decoration state to restore later
-            completionState.storeTokenDecorationState(documentUri);
+            // completionState.storeTokenDecorationState(documentUri);
             
             // Apply the custom red decoration only to the current token
             editor.setDecorations(currentTokenRedDecorationType, [currenTokenRange]);
             
             // Clear all existing red token decorations
             // completionState.clearTokenDecorations(documentUri);
-            completionState.clearTokenEntropyDecorations(); // Clear entropy decorations to avoid conflicts
+            // completionState.clearTokenEntropyDecorations(); // Clear entropy decorations to avoid conflicts
+            completionState.clearStage1Decorations();
         
             // Insert alternatives below the token's line
             const lineNumber = currenTokenRange.start.line;

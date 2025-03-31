@@ -72,7 +72,8 @@ export async function useAlternative(
         });
         
         // Clear all decorations
-        completionState.clearTokenDecorations(documentUri);
+        // completionState.clearTokenDecorations(documentUri);
+        completionState.clearStage1Decorations();
         
         // Resample the completion with the new token
         const resampledCompletion = await lib.resampleAtToken(
