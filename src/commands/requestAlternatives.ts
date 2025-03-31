@@ -108,6 +108,11 @@ export async function requestAlternatives(
                     editBuilder.insert(insertPosition, alternativeLineText + '\n');
                 });
             });
+
+            // Move the cursor to the first alternative
+		    const newCursorPosition = new vscode.Position(lineNumber + 1, linePrefix.length);
+		    const newSelection = new vscode.Selection(newCursorPosition, newCursorPosition);
+		    editor.selection = newSelection;
         
             // Calculate the range of inserted alternatives
             const startLine = lineNumber + 1;
