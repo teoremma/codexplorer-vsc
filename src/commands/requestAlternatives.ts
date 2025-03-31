@@ -79,20 +79,11 @@ export async function requestAlternatives(
                 border: '1px solid rgba(255, 0, 0, 0.3)',
                 borderRadius: '3px'
             });
-        
-            // const originalTokens = completionState.getCompletionTokens(documentUri);
-            
-            // Save the original tokens decorations by creating a snapshot
-            // This will be needed to restore them later
-            // Store original token decoration state to restore later
-            // completionState.storeTokenDecorationState(documentUri);
-            
+
             // Apply the custom red decoration only to the current token
             editor.setDecorations(currentTokenRedDecorationType, [currenTokenRange]);
             
             // Clear all existing red token decorations
-            // completionState.clearTokenDecorations(documentUri);
-            // completionState.clearTokenEntropyDecorations(); // Clear entropy decorations to avoid conflicts
             completionState.clearStage1Decorations();
         
             // Insert alternatives below the token's line
@@ -147,6 +138,28 @@ export async function requestAlternatives(
         
             editor.setDecorations(grayedPrefixDecorationType, commonPrefixDecorations);
             editor.setDecorations(alternativeTokenDecorationType, alternativeTokenDecorations);
+            
+            // Apply dimmed decoration to all lines above and below the alternatives
+            const dimmedDecorations = [];
+            
+            // Lines above alternatives (if any)
+            if (lineNumber > 0) {
+                dimmedDecorations.push(new vscode.Range(
+                    new vscode.Position(0, 0),
+                    new vscode.Position(lineNumber, 0)
+                ));
+            }
+            
+            // Lines below alternatives (if any)
+            const lastLine = editor.document.lineCount - 1;
+            if (endLine + 1 <= lastLine) {
+                dimmedDecorations.push(new vscode.Range(
+                    new vscode.Position(endLine + 1, 0),
+                    new vscode.Position(lastLine, editor.document.lineAt(lastLine).text.length)
+                ));
+            }
+            
+            editor.setDecorations(dimmedDecorationType, dimmedDecorations);
             
             // Register a hover provider for the alternatives area
             const hoverDisposable = vscode.languages.registerHoverProvider({ pattern: editor.document.uri.fsPath }, {
