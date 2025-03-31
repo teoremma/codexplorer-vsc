@@ -1,16 +1,20 @@
 import * as vscode from 'vscode';
 import { DecorationFactory } from '../ui/decorations';
 import { ConfigurationService } from '../configuration';
-import { CompletionStateManager } from '../state/completionState';
-import { StageManager, Stage } from '../state/stageManager';
+import { CompletionStateManager, Stage } from '../state/completionState';
 import * as lib from '../lib';
 import { setCompletionDecorations } from './common';
 
 export async function requestAlternatives(
     config: ReturnType<typeof ConfigurationService.getConfig>,
     completionState: CompletionStateManager, 
-    stageManager: StageManager
 ) {
+    const allowedStages = [Stage.ENTROPY_VIEW];
+    if (!completionState.canExecuteInCurrentStage(allowedStages)) {
+        vscode.window.showErrorMessage('Cannot request alternatives at this time.');
+        return;
+    }
+
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showErrorMessage('No active text editor found.');
@@ -216,6 +220,7 @@ export async function requestAlternatives(
                     
                     // Dispose this event listener
                     cleanupDisposable.dispose();
+                    completionState.setCurrentStage(Stage.ENTROPY_VIEW);
                 } else {
                     // Update the selected alternative highlight
                     const selectedLine = newPosition.line;
@@ -230,6 +235,11 @@ export async function requestAlternatives(
             });
         
         });
+    
+        vscode.window.showInformationMessage('Alternatives fetched successfully!');
+
+        // Set the current stage to alternatives view
+        completionState.setCurrentStage(Stage.ALTERNATIVES_VIEW);
 
     } catch (error) {
         if (error instanceof Error) {

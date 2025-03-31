@@ -2,14 +2,21 @@ import * as vscode from 'vscode';
 import { CompletionTokenInfo } from '../extension';
 import { ProviderCompletions } from '../lib';
 
-export interface ExtensionTokenInfo {
-    range: vscode.Range; // The range of the token in the document 
+export enum Stage {
+    IDLE = 0,
+    ENTROPY_VIEW = 1,
+    ALTERNATIVES_VIEW = 2,
 }
+
+// export interface ExtensionTokenInfo {
+//     range: vscode.Range; // The range of the token in the document 
+// }
 
 export class CompletionStateManager {
     private static instance: CompletionStateManager;
     private originalContent: string = "";
     private currentCompletion: ProviderCompletions = { prompt: "", modelID: "", completions: [] };
+    private currentStage: Stage = Stage.IDLE;
 
     // Stage 1 state
     private currentTokenRanges: vscode.Range[] = [];
@@ -38,9 +45,9 @@ export class CompletionStateManager {
         return this.originalContent;
     }
 
-    public getOriginalContentLength(): number {
-        return this.originalContent.length;
-    }
+    // public getOriginalContentLength(): number {
+    //     return this.originalContent.length;
+    // }
 
     public setCurrentCompletion(editorId: string, completion: ProviderCompletions): void {
         this.currentCompletion = completion;
@@ -48,6 +55,19 @@ export class CompletionStateManager {
 
     public getCurrentCompletion(editorId: string): ProviderCompletions {
         return this.currentCompletion;
+    }
+
+    // Stage management
+    public setCurrentStage(stage: Stage): void {
+        this.currentStage = stage;
+    }
+
+    public getCurrentStage(): Stage {
+        return this.currentStage;
+    }
+
+    public canExecuteInCurrentStage(allowedStages: Stage[]): boolean {
+        return allowedStages.includes(this.currentStage);
     }
 
     public setCurrentTokenRanges(editorId: string, ranges: vscode.Range[]): void {

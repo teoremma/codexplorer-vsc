@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { ConfigurationService } from './configuration';
 import { CompletionStateManager } from './state/completionState';
 import { DecorationFactory } from './ui/decorations';
-import { StageManager, Stage } from './state/stageManager';
 import { getCompletions } from './commands/getCompletions';
 import { requestAlternatives } from './commands/requestAlternatives';
 import { useAlternative } from './commands/useAlternative';
@@ -23,12 +22,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     const config = ConfigurationService.getConfig();
     const completionState = CompletionStateManager.getInstance();
-    const stageManager = StageManager.getInstance();
+    // const stageManager = StageManager.getInstance();
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('codexplorer.getCompletion', () => getCompletions(config, completionState, stageManager)),
-        vscode.commands.registerCommand('codexplorer.requestAlternatives', () => requestAlternatives(config, completionState, stageManager)),
-        vscode.commands.registerCommand('codexplorer.useAlternative', () => useAlternative(config, completionState, stageManager))
+        vscode.commands.registerCommand('codexplorer.getCompletion', () => getCompletions(config, completionState)),
+        vscode.commands.registerCommand('codexplorer.requestAlternatives', () => requestAlternatives(config, completionState)),
+        vscode.commands.registerCommand('codexplorer.useAlternative', () => useAlternative(config, completionState))
     );
 }
 

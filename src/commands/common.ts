@@ -29,7 +29,6 @@ export async function updateCurrentCompletion(
     const originalContent = completionState.getOriginalContent();
     
     // Remove previous content and decorations
-    // completionState.clearTokenDecorations(editorUri);
     completionState.clearStage1Decorations();
 
     await editor.edit(editBuilder => {
@@ -48,8 +47,6 @@ export async function updateCurrentCompletion(
     
     vscode.window.showInformationMessage('Completion inserted successfully!');
     
-    // completionState.setAlternativesReady(editorUri, true);
-                
     const tokenRanges: vscode.Range[] = [];
 
     if (!completionData.completions[0].steps) {
@@ -79,7 +76,6 @@ export async function updateCurrentCompletion(
     }
     
     // Store token information in the state
-    // completionState.setCompletionTokens(editor.document.uri.toString(), completionTokens);
     completionState.setCurrentTokenRanges(editor.document.uri.toString(), tokenRanges);
 
     setCompletionDecorations(completionState);
@@ -115,7 +111,7 @@ function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEdito
 function createCompletionHighlightDecoration(): vscode.TextEditorDecorationType {
     // This function creates a decoration type for highlighting the completion
     return vscode.window.createTextEditorDecorationType({
-        backgroundColor: 'rgba(255, 255, 255, 0.1)', // Yellow background for highlighting
+        backgroundColor: 'rgba(127, 127, 127, 0.2)', // Yellow background for highlighting
     });
 }
 
