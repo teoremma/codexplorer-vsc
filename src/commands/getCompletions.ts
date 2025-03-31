@@ -1,17 +1,18 @@
 import * as vscode from 'vscode';
 import * as lib from '../lib';
 import { ConfigurationService } from '../configuration';
-import { CompletionStateManager } from '../state/completionState';
-import { StageManager, Stage } from '../state/stageManager';
+import { CompletionStateManager, Stage } from '../state/completionState';
+// import { StageManager, Stage } from '../state/stageManager';
 import { CompletionTokenInfo } from '../extension';
 import { updateCurrentCompletion } from './common';
 
 export async function getCompletions(
     config: ReturnType<typeof ConfigurationService.getConfig>, 
     completionState: CompletionStateManager, 
-    stageManager: StageManager
+    // stageManager: StageManager
 ) {
-    if (!stageManager.canExecuteInCurrentStage([Stage.IDLE])) {
+    const allowedStages = [Stage.IDLE];
+    if (!completionState.canExecuteInCurrentStage(allowedStages)) {
         vscode.window.showErrorMessage('Cannot request completions at this time.');
         return;
     }
@@ -43,6 +44,7 @@ export async function getCompletions(
             );
 
             updateCurrentCompletion(completionData, completionState);
+            completionState.setCurrentStage(Stage.ENTROPY_VIEW);
         });
     } catch (error) {
         if (error instanceof Error) {

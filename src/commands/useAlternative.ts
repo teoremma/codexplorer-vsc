@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import { CompletionStateManager } from '../state/completionState';
-import { StageManager } from '../state/stageManager';
+import { CompletionStateManager, Stage } from '../state/completionState';
 import { ConfigurationService } from '../configuration';
 import * as lib from '../lib';
 import { updateCurrentCompletion } from './common';
@@ -8,8 +7,14 @@ import { updateCurrentCompletion } from './common';
 export async function useAlternative(
     config: ReturnType<typeof ConfigurationService.getConfig>,
     completionState: CompletionStateManager, 
-    stageManager: StageManager
 ) {
+    const allowedStages = [Stage.ALTERNATIVES_VIEW];
+    if (!completionState.canExecuteInCurrentStage(allowedStages)) {
+        vscode.window.showErrorMessage('Cannot use alternative at this time.');
+        return;
+    }
+
+
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showErrorMessage('No active text editor found.');
@@ -72,7 +77,8 @@ export async function useAlternative(
         });
         
         // Clear all decorations
-        completionState.clearTokenDecorations(documentUri);
+        // completionState.clearTokenDecorations(documentUri);
+        completionState.clearStage1Decorations();
         
         // Resample the completion with the new token
         const resampledCompletion = await lib.resampleAtToken(
@@ -87,6 +93,9 @@ export async function useAlternative(
         await updateCurrentCompletion(resampledCompletion, completionState);
         
         vscode.window.showInformationMessage(`Alternative token "${alternativeToken}" applied successfully!`);
+
+        // Set stage back to ENTROPY_VIEW
+        completionState.setCurrentStage(Stage.ENTROPY_VIEW);
     } catch (error) {
         console.error('Error applying alternative:', error);
         if (error instanceof Error) {
