@@ -38,9 +38,10 @@ export async function requestAlternatives(
 
     // Get alternatives for the token
     const alternatives = currentCompletions.completions[0].steps[currentTokenIdx].top_logprobs
-        .map((alt, index) => (
-            alt.completionPreview?.text
-        ));
+        .map((alt, index) => ({
+            text: alt.completionPreview?.text,
+            explanation: alt.completionPreview?.explanation
+        }));
     
     // Create decoration types
     const alternativeDecorationType = vscode.window.createTextEditorDecorationType({
@@ -97,7 +98,7 @@ export async function requestAlternatives(
     await editor.edit(editBuilder => {
         alternatives.slice(1).forEach((alt, index) => {
             // Create the alternative line by replacing the current token with the alternative
-            const alternativeLineText = linePrefix + alt;
+            const alternativeLineText = linePrefix + alt.text;
 
             // Insert the alternative line
             editBuilder.insert(insertPosition, alternativeLineText + '\n');
@@ -123,14 +124,12 @@ export async function requestAlternatives(
         // For common prefix (unchanged)
         const prefixRange = new vscode.Range(
             new vscode.Position(i, 0),
-            // new vscode.Position(i, currentToken.range.start.character)
             new vscode.Position(i, currenTokenRange.start.character) 
         );
         commonPrefixDecorations.push(prefixRange);
         
         // For alternative tokens (with yellow background)
         const tokenRange = new vscode.Range(
-            // new vscode.Position(i, currentToken.range.start.character),
             new vscode.Position(i, currenTokenRange.start.character), 
             new vscode.Position(i, editor.document.lineAt(i).text.length)
         );
@@ -140,23 +139,26 @@ export async function requestAlternatives(
     editor.setDecorations(grayedPrefixDecorationType, commonPrefixDecorations);
     editor.setDecorations(alternativeTokenDecorationType, alternativeTokenDecorations);
     
-    // Highlight the current token
-    // editor.setDecorations(alternativeDecorationType, [currentToken.range]);
-    editor.setDecorations(alternativeDecorationType, [currenTokenRange]);
-    
-    // Apply dim decoration to everything except the current line and alternatives section
-    const dimmedRanges = [];
-    for (let i = 0; i < editor.document.lineCount; i++) {
-        if (i !== lineNumber && (i < startLine || i > endLine)) {
-            dimmedRanges.push(editor.document.lineAt(i).range);
+    // Register a hover provider for the alternatives area
+    const hoverDisposable = vscode.languages.registerHoverProvider({ pattern: editor.document.uri.fsPath }, {
+        provideHover(document, position, token) {
+            // Check if hover is in the alternatives area
+            if (position.line >= startLine && position.line <= endLine) {
+                // Calculate which alternative this is (0-indexed)
+                const altIndex = position.line - startLine + 1; // +1 because we skip the first alternative (original)
+                
+                // Get the explanation for this alternative
+                const explanation = alternatives[altIndex]?.explanation;
+                
+                if (explanation) {
+                    return new vscode.Hover(new vscode.MarkdownString(`**Alternative Explanation**: ${explanation}`));
+                }
+            }
+            return null;
         }
-    }
-    editor.setDecorations(dimmedDecorationType, dimmedRanges);
+    });
     
-    // Show information message
-    vscode.window.showInformationMessage(`Displaying ${alternatives.length-1} alternative tokens.`);
-    
-    // Set up cleanup when selection changes
+    // Add the hover disposable to cleanup when done
     const cleanupDisposable = vscode.window.onDidChangeTextEditorSelection(() => {
         // Check if cursor moved away from alternatives area
         const newPosition = editor.selection.active;
@@ -183,6 +185,9 @@ export async function requestAlternatives(
             selectedAlternativeDecorationType.dispose();
             currentTokenRedDecorationType.dispose();
             
+            // Dispose the hover provider
+            hoverDisposable.dispose();
+            
             // Restore the original token decorations
             completionState.restoreTokenDecorationState(documentUri);
             
@@ -192,7 +197,6 @@ export async function requestAlternatives(
             // Update the selected alternative highlight
             const selectedLine = newPosition.line;
             const selectedRange = new vscode.Range(
-                // new vscode.Position(selectedLine, currentToken.range.start.character),
                 new vscode.Position(selectedLine, currenTokenRange.start.character),
                 new vscode.Position(selectedLine, editor.document.lineAt(selectedLine).text.length)
             );

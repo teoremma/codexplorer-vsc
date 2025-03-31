@@ -2,6 +2,10 @@ import * as vscode from 'vscode';
 import { CompletionTokenInfo } from '../extension';
 import { ProviderCompletions } from '../lib';
 
+export interface ExtensionTokenInfo {
+    range: vscode.Range; // The range of the token in the document 
+}
+
 export class CompletionStateManager {
     private static instance: CompletionStateManager;
     private originalContent: string = "";
