@@ -67,6 +67,7 @@ async function getFireworksAICompletion(
     apiKey: string,
     stop: string[] = ["\n\n", "```"],
     temprerature: number = 0.0,
+    top_k: number = 1,
 ): Promise<ProviderCompletions> {
     const endpoint = "https://api.fireworks.ai/inference/v1/completions";
     const headers = {
@@ -81,7 +82,8 @@ async function getFireworksAICompletion(
         stop: stop,
         temperature: temprerature,
         logprobs: 5,
-        logit_bias: {674: -100, 2: -100},
+        logit_bias: { 2: -100, 674: -100, 3270: -100, 4304: -100, 7860: -100, 12885: -100 },
+        top_k: top_k,
     };
 
     let response;
@@ -100,11 +102,16 @@ async function getFireworksAICompletion(
         const completionText = choice.text;
         const steps = choice.logprobs.tokens.map((token: string, index: number) => {
             const text_offset = choice.logprobs.text_offset[index];
-            const logprob = choice.logprobs.token_logprobs[index];
+            let logprob = choice.logprobs.token_logprobs[index];
 
-            const top_logprobs = Object.entries(choice.logprobs.top_logprobs[index] || {}).map(([token, logprob]) => 
+            let top_logprobs = Object.entries(choice.logprobs.top_logprobs[index] || {}).map(([token, logprob]) => 
                 ({token,logprob: logprob as number})
             ).sort((a, b) => b.logprob - a.logprob);
+
+            // Merge tokens and their probabilities that only differ by whitespace and/or quotes
+            top_logprobs = whiteSpaceElim(top_logprobs.map(({ token, logprob }) => [token, logprob] as [string, number]))
+                .map(([token, logprob]) => ({ token, logprob }));
+            logprob = top_logprobs[0].logprob;
 
             const entropy = top_logprobs.reduce((sum:number, lp:any) => {
                 const prob = Math.exp(lp.logprob);
@@ -134,6 +141,26 @@ async function getFireworksAICompletion(
     };
 }
 
+// Merge tokens and their probabilities that only differ by whitespace and/or quotes
+function whiteSpaceElim(topLogprobs: Array<[string, number]>): Array<[string, number]> {
+    const normalizeToken = (token: string) => token.replace(/\s+/g, '').replace(/'/g, '"');
+    const tokenMap = new Map();
+    topLogprobs.forEach(([token, prob]) => {
+      const normalizedToken = normalizeToken(token);
+      const p = Math.exp(prob);
+      if (tokenMap.has(normalizedToken)) {
+        tokenMap.get(normalizedToken)[1] += p;
+      } else {
+        tokenMap.set(normalizedToken, [token, p] );
+      }
+    });
+    // Sort by probability and convert back to logprobs
+    const normalizedProbs = Array.from(tokenMap.values()).map(([token, prob]): [string, number] => {
+        return [token, Math.log(prob)];
+    }).sort((a, b) => b[1] - a[1]);
+    return normalizedProbs;
+} 
+
 export async function fillAlternativesAtToken(
     completions: ProviderCompletions,
     tokenIndex: number,
@@ -161,10 +188,12 @@ export async function fillAlternativesAtToken(
     const completionPrefix = completionText.substring(0, tokenPosition);
 
     const perplexity = Math.pow(2, step.entropy);
+    // const n_alternatives = Math.round(perplexity);
     const n_alternatives = 4;
 
     console.log(`Generating ${n_alternatives} alternatives for token "${tokenStr}" with entropy ${step.entropy}`);
     console.log(`Top logprobs: ${step.top_logprobs.map(lp => `${lp.token}: ${lp.logprob}`).join(", ")}`);
+    console.log(`Perplexity: ${perplexity}`);
     
     // Create an array of promises for parallel execution
     const alternativePromises = [];
