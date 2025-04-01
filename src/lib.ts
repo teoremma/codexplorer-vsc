@@ -107,10 +107,10 @@ async function getFireworksAICompletion(
                 ({token,logprob: logprob as number})
             ).sort((a, b) => b.logprob - a.logprob);
 
-            // Merge tokens and their probabilities that only differ by whitespace and/or quotes
-            top_logprobs = whiteSpaceElim(top_logprobs.map(({ token, logprob }) => [token, logprob] as [string, number]))
-                .map(([token, logprob]) => ({ token, logprob }));
-            logprob = top_logprobs[0].logprob;
+            // // Merge tokens and their probabilities that only differ by whitespace and/or quotes
+            // top_logprobs = whiteSpaceElim(top_logprobs.map(({ token, logprob }) => [token, logprob] as [string, number]))
+            //     .map(([token, logprob]) => ({ token, logprob }));
+            // logprob = top_logprobs[0].logprob;
 
             const entropy = top_logprobs.reduce((sum:number, lp:any) => {
                 const prob = Math.exp(lp.logprob);
@@ -272,7 +272,7 @@ export async function fillAlternativesAtToken(
     const n_alternatives = 4;
 
     console.log(`Generating ${n_alternatives} alternatives for token "${tokenStr}" with entropy ${step.entropy}`);
-    console.log(`Top logprobs: ${step.top_logprobs.map(lp => `${lp.token}: ${lp.logprob}`).join(", ")}`);
+    console.log(`Top logprobs: ${step.top_logprobs.map(lp => `${JSON.stringify(lp.token)}: ${lp.logprob}`).join(", ")}`);
     console.log(`Perplexity: ${perplexity}`);
     
     // Create an array of promises for parallel execution

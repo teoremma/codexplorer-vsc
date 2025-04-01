@@ -89,7 +89,7 @@ function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEdito
         perplexityLevel = 4; // Clamp to 4
     }
     // If perplexityLevel is close to 0, make round it to 0
-    if (perplexityLevel < 0.5) {
+    if (perplexityLevel < 0.2) {
         perplexityLevel = 0; // Round to 0 for very low values to avoid too much noise in UI
     }
     if (perplexityLevel === 0) {
@@ -111,7 +111,7 @@ function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEdito
 function createCompletionHighlightDecoration(): vscode.TextEditorDecorationType {
     // This function creates a decoration type for highlighting the completion
     return vscode.window.createTextEditorDecorationType({
-        backgroundColor: 'rgba(127, 127, 127, 0.2)', // Yellow background for highlighting
+        backgroundColor: 'rgba(127, 127, 127, 0.3)', // Yellow background for highlighting
     });
 }
 

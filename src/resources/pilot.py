@@ -16,4 +16,3 @@ def register():
     # Add username and password to database, or return exception
     try:
         # Hash the password
-        
