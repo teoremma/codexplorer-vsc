@@ -96,14 +96,27 @@ export async function requestAlternatives(
             
             // Get the current line text
             const currentLineText = editor.document.lineAt(lineNumber).text;
+
+            // Check if the current line is the last line of the file
+            const isLastLine = lineNumber === editor.document.lineCount - 1;
+            if (isLastLine) {
+                // Insert a newline character at the end of the current line to not break alternatives
+                const newLineText = currentLineText + '\n';
+                await editor.edit(editBuilder => {
+                    editBuilder.replace(new vscode.Range(lineNumber, 0, lineNumber, currentLineText.length), newLineText);
+                });
+                insertPosition = new vscode.Position(lineNumber + 1, 0);
+            }
+
             const linePrefix = currentLineText.substring(0, currenTokenRange.start.character);
             
             // Create a preview of what each alternative would generate
             await editor.edit(editBuilder => {
                 alternatives.slice(1).forEach((alt, index) => {
+                    // // Get rid of newline characters in the alternative text
+                    // const alternativeLine = alt.text?.replace(/\n/g, ' ');
                     // Create the alternative line by replacing the current token with the alternative
                     const alternativeLineText = linePrefix + alt.text;
-                
                     // Insert the alternative line
                     editBuilder.insert(insertPosition, alternativeLineText + '\n');
                 });
@@ -181,8 +194,14 @@ export async function requestAlternatives(
                         // Get the explanation for this alternative
                         const explanation = alternatives[altIndex]?.explanation;
                         
+                        // Make sure the hover appears below the alternative line
                         if (explanation) {
-                            return new vscode.Hover(new vscode.MarkdownString(`**Alternative Explanation**: ${explanation}`));
+                            const hoverRange = new vscode.Range(
+                                new vscode.Position(position.line, 0),
+                                new vscode.Position(position.line, document.lineAt(position.line).text.length)
+                            );
+                            const hoverMessage = new vscode.MarkdownString(`**Alternative Explanation**: ${explanation}`);
+                            return new vscode.Hover(hoverMessage, hoverRange);
                         }
                     }
                     return null;
