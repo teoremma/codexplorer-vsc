@@ -1,4 +1,6 @@
 import axios from "axios";
+const fs = require('fs');
+const path = require('path');
 
 export interface CompletionPreview {
     text: string;
@@ -87,14 +89,41 @@ async function getFireworksAICompletion(
 
     let response;
 
-    try {
-        response = await axios.post(endpoint, payload, { headers });
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            console.error("Error response:", error.response.data);
+    const cachedPromptPath = `/Users/emmanuel/repos/codexplorer-vsc/src/resources/pilot.py`;
+    const cachedPrompt = fs.readFileSync(cachedPromptPath, 'utf8');
+    if (prompt === cachedPrompt) {
+        console.log("Using cached response for prompt");
+        const cachedResponsePath = `/Users/emmanuel/repos/codexplorer-vsc/src/resources/fireworks-response-2025-04-01T19-29-42-977Z.json`;
+        const cachedResponse = fs.readFileSync(cachedResponsePath, 'utf8');
+        response = {data: JSON.parse(cachedResponse)};
+    } else {
+        console.log("Requesting response from FireworksAI");
+        try {
+            response = await axios.post(endpoint, payload, { headers });
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response) {
+                console.error("Error response:", error.response.data);
+            }
+            throw error;
         }
-        throw error;
     }
+
+
+    // // Log the response for debugging
+    // console.log("Response received:", response.data);
+
+    // // Save the response to a JSON file
+    // const responseData = response.data;
+    // const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // const filename = path.join(`${__dirname}/fireworks-response-${timestamp}.json`);
+
+    // try {
+    //     fs.writeFileSync(filename, JSON.stringify(responseData, null, 2));
+    //     console.log(`Response saved to ${filename}`);
+    // } catch (error) {
+    //     console.error("Error saving response to file:", error);
+    // }
+    
 
     // Iterate over each of the choices and transform to our format
     const completions = response.data.choices.map((choice: any) => {
