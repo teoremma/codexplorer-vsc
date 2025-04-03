@@ -76,7 +76,7 @@ async function getFireworksAICompletion(
         "Authorization": `Bearer ${apiKey}`
     };
     // Bias for meta-llama/Llama-3.3-70B-Instruct
-    const logit_bias = {2: -100, 674: -100, 3270: -100, 4304: -100, 7860: -100, 12885: -100};
+    const logit_bias = {2: -100, 674: -100, 3270: -100, 4304: -100, 7275: -100, 7860: -100, 12713: -100, 12885: -100};
     const payload = {
         model: modelID,
         prompt: prompt,
@@ -178,7 +178,7 @@ async function getFireworksAICompletion(
 
 // Merge tokens and their probabilities that only differ by whitespace
 function whiteSpaceElim(topLogprobs: Array<[string, number]>): Array<[string, number]> {
-    const normalizeToken = (token: string) => token.replace(/\s+/g, '');
+    const normalizeToken = (token: string) => token.replaceAll(/\s+/g, '');
     const tokenMap = new Map();
     topLogprobs.forEach(([token, prob]) => {
       const normalizedToken = normalizeToken(token);
@@ -219,6 +219,12 @@ async function fillNthAlternative(
         console.error("No alternative token found for index:", alternativeIndex);
         return;
     }
+    const originalTokenText = step.token;
+    const originalTokenOffset = step.text_offset;
+    const originalPrompt = completions.prompt;
+    const originalCompletionText = completions.completions[0].text;
+    let altText;
+
     // If alternativeToken contains any newline, it is not suitable for alternative generation
     if (alternativeToken.token.includes("\n")) {
         // Update the completion preview with the explanation
@@ -226,34 +232,29 @@ async function fillNthAlternative(
             text: alternativeToken.token,
             explanation: ""
         };
-
         console.error("Alternative token contains newline, skipping:", alternativeToken.token);
-        return;
+        altText = alternativeToken.token;
+    } else {
+        const completionPrefix = originalCompletionText.substring(0, step.text_offset);
+        const prompt = originalPrompt + completionPrefix + alternativeToken.token;
+
+        console.log(`Generating alternative for token "${originalTokenText}" at index ${tokenIndex} with alternative token "${alternativeToken.token}"`);
+
+        const altCompletion = await getFireworksAICompletion(
+            prompt,
+            completions.modelID,
+            maxTokens,
+            apiKey,
+            ["\n"], // Stop at newline
+        );
+
+        altText = altCompletion.completions[0].text;
+        const newlinePos = altText.indexOf('\n');
+        if (newlinePos !== -1) {
+            altText = altText.substring(0, newlinePos);
+        }
+        altText = alternativeToken.token + altText; 
     }
-    
-    const originalTokenText = step.token;
-    const originalTokenOffset = step.text_offset;
-    const originalPrompt = completions.prompt;
-    const originalCompletionText = completions.completions[0].text;
-    const completionPrefix = originalCompletionText.substring(0, step.text_offset);
-    const prompt = originalPrompt + completionPrefix + alternativeToken.token;
-
-    console.log(`Generating alternative for token "${originalTokenText}" at index ${tokenIndex} with alternative token "${alternativeToken.token}"`);
-
-    const altCompletion = await getFireworksAICompletion(
-        prompt,
-        completions.modelID,
-        maxTokens,
-        apiKey,
-        ["\n"], // Stop at newline
-    );
-
-    let altText = altCompletion.completions[0].text;
-    const newlinePos = altText.indexOf('\n');
-    if (newlinePos !== -1) {
-        altText = altText.substring(0, newlinePos);
-    }
-    altText = alternativeToken.token + altText; 
 
     // step.top_logprobs[alternativeIndex].completionPreview = {
     //     text: altText, 
