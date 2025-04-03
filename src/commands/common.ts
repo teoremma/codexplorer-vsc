@@ -122,7 +122,7 @@ function createDismissedTokenDecoration(): vscode.TextEditorDecorationType {
 function createCompletionHighlightDecoration(): vscode.TextEditorDecorationType {
     // This function creates a decoration type for highlighting the completion
     return vscode.window.createTextEditorDecorationType({
-        backgroundColor: 'rgba(127, 127, 127, 0.1)', // Yellow background for highlighting
+        backgroundColor: 'rgba(127, 127, 127, 0.3)', // Yellow background for highlighting
     });
 }
 
@@ -163,7 +163,6 @@ export function setCompletionDecorations(
     const steps: lib.StepInfo[] = completionState.getCurrentCompletion(editorUri).completions[0].steps;
     const stepRanges: vscode.Range[] = completionState.getCurrentTokenRanges(editorUri);
     const dismissedSteps: boolean[] = completionState.getDismissedTokens(editorUri);
-    console.log(`Dismissed steps: ${dismissedSteps}`);
 
     const tokenEntropyDecorations: vscode.TextEditorDecorationType[] = [];
     
