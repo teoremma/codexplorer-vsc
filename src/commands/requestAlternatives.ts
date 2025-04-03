@@ -219,6 +219,42 @@ export async function requestAlternatives(
                     return null;
                 }
             });
+
+            const cleanupAlternatives = (discard: boolean) => {
+                // Clean up alternatives and decorations
+                editor.edit(editBuilder => {
+                    const deleteRange = new vscode.Range(
+                        new vscode.Position(startLine, 0),
+                        new vscode.Position(endLine + 1, 0)
+                    );
+                    editBuilder.delete(deleteRange);
+                });
+                                    
+                // Dispose decorations
+                alternativeDecorationType.dispose();
+                dimmedDecorationType.dispose();
+                grayedPrefixDecorationType.dispose();
+                alternativeTokenDecorationType.dispose();
+                selectedAlternativeDecorationType.dispose();
+                currentTokenRedDecorationType.dispose();
+                                    
+                // Dispose the hover provider
+                hoverDisposable.dispose();
+                
+                if (discard) {
+                    completionState.dismissTokenIdx(documentUri, currentTokenIdx);
+                }
+                // Print all indices of dismissed tokens
+                // console.log('Dismissed token indices:', completionState.getDismissedTokens(documentUri));
+                                    
+                // Restore the original token decorations
+                // completionState.restoreTokenDecorationState(documentUri);
+                setCompletionDecorations(completionState);
+                                    
+                completionState.setCurrentAltsTokenIndex(documentUri, -1);
+                
+                completionState.setCurrentStage(Stage.ENTROPY_VIEW);
+            };
             
             // Add the hover disposable to cleanup when done
             const cleanupDisposable = vscode.window.onDidChangeTextEditorSelection(() => {
@@ -228,35 +264,9 @@ export async function requestAlternatives(
                 const isInAlternativesArea = (newLine >= startLine && newLine <= endLine);
                 
                 if (!isInAlternativesArea) {
-                    completionState.setCurrentAltsTokenIndex(documentUri, -1);
-                
-                    // Clean up alternatives and decorations
-                    editor.edit(editBuilder => {
-                        const deleteRange = new vscode.Range(
-                            new vscode.Position(startLine, 0),
-                            new vscode.Position(endLine + 1, 0)
-                        );
-                        editBuilder.delete(deleteRange);
-                    });
-                    
-                    // Dispose decorations
-                    alternativeDecorationType.dispose();
-                    dimmedDecorationType.dispose();
-                    grayedPrefixDecorationType.dispose();
-                    alternativeTokenDecorationType.dispose();
-                    selectedAlternativeDecorationType.dispose();
-                    currentTokenRedDecorationType.dispose();
-                    
-                    // Dispose the hover provider
-                    hoverDisposable.dispose();
-                    
-                    // Restore the original token decorations
-                    // completionState.restoreTokenDecorationState(documentUri);
-                    setCompletionDecorations(completionState);
-                    
+                    cleanupAlternatives(true);
                     // Dispose this event listener
                     cleanupDisposable.dispose();
-                    completionState.setCurrentStage(Stage.ENTROPY_VIEW);
                 } else {
                     // Update the selected alternative highlight
                     const selectedLine = newPosition.line;
