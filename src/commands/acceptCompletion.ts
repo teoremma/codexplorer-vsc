@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { CompletionStateManager, Stage } from '../state/completionState';
+import { CompletionCodeLensProvider } from '../ui/codeLensProvider';
 
 export async function acceptCompletion(
-    completionState: CompletionStateManager
+    completionState: CompletionStateManager,
+    codeLensProvider: CompletionCodeLensProvider
 ) {
     const allowedStages = [Stage.ENTROPY_VIEW];
     if (!completionState.canExecuteInCurrentStage(allowedStages)) {
@@ -24,5 +26,7 @@ export async function acceptCompletion(
 
     completionState.clearStage1Decorations();
 
+    codeLensProvider.refresh();
+    
     vscode.window.showInformationMessage('Completion accepted successfully!');
 }

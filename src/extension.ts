@@ -25,6 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const config = ConfigurationService.getConfig();
     const completionState = CompletionStateManager.getInstance();
+    const codeLensProvider = new CompletionCodeLensProvider(completionState);
     // const stageManager = StageManager.getInstance();
 
     // Toggle Hover Above setting off
@@ -32,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('codexplorer.getCompletion', () => getCompletions(config, completionState)),
-        vscode.commands.registerCommand('codexplorer.acceptCompletion', () => acceptCompletion(completionState)),
+        vscode.commands.registerCommand('codexplorer.acceptCompletion', () => acceptCompletion(completionState, codeLensProvider)),
         vscode.commands.registerCommand('codexplorer.dismissCompletion', () => dismissCompletion(completionState)),
         vscode.commands.registerCommand('codexplorer.requestAlternatives', () => requestAlternatives(config, completionState)),
         vscode.commands.registerCommand('codexplorer.useAlternative', () => useAlternative(config, completionState))
@@ -41,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.languages.registerCodeLensProvider(
             { pattern: '**/*'},
-            new CompletionCodeLensProvider(completionState),
+            codeLensProvider,
         )
     );
 }

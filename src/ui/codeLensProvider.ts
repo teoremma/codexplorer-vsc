@@ -4,6 +4,9 @@ import { CompletionStateManager, Stage } from '../state/completionState';
 export class CompletionCodeLensProvider implements vscode.CodeLensProvider {
     private completionState: CompletionStateManager;
 
+    private _onDidChangeCodeLensesEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLensesEmitter.event;
+
     constructor(completionState: CompletionStateManager) {
         this.completionState = completionState;
     }
@@ -39,5 +42,9 @@ export class CompletionCodeLensProvider implements vscode.CodeLensProvider {
             new vscode.CodeLens(range, acceptCommand),
             new vscode.CodeLens(range, dismissCommand)
         ];
+    }
+
+    public refresh(): void {
+        this._onDidChangeCodeLensesEmitter.fire();
     }
 }
