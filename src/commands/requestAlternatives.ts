@@ -220,6 +220,46 @@ export async function requestAlternatives(
                 }
             });
 
+            // Register commands for CodeLens actions
+            const acceptCommandDisposable = vscode.commands.registerCommand("codexplorer.hideAlternatives", () => {
+                cleanupAlternatives(false);
+            });
+
+            const discardCommandDisposable = vscode.commands.registerCommand("codexplorer.discardAlternatives", () => {
+                cleanupAlternatives(true);
+            });
+
+            // Create CodeLens provider
+            const codeLensProvider = new class implements vscode.CodeLensProvider {
+                provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+                    // Create a range for the original line
+                    const originalLineRange = new vscode.Range(
+                        new vscode.Position(lineNumber, 0),
+                        new vscode.Position(lineNumber, editor.document.lineAt(lineNumber).text.length)
+                    );
+                    
+                    // CodeLens for accepting an alternative
+                    const hideLens = new vscode.CodeLens(originalLineRange, {
+                        title: "Exit",
+                        command: "codexplorer.hideAlternatives"
+                    });
+                    
+                    // CodeLens for discarding alternatives
+                    const discardLens = new vscode.CodeLens(originalLineRange, {
+                        title: "Exit & Hide",
+                        command: "codexplorer.discardAlternatives"
+                    });
+                    
+                    return [hideLens, discardLens];
+                }
+            };
+
+            // Register the CodeLens provider
+            const codeLensDisposable = vscode.languages.registerCodeLensProvider(
+                { pattern: editor.document.uri.fsPath },
+                codeLensProvider
+            );
+
             const cleanupAlternatives = (discard: boolean) => {
                 // Clean up alternatives and decorations
                 editor.edit(editBuilder => {
@@ -240,6 +280,11 @@ export async function requestAlternatives(
                                     
                 // Dispose the hover provider
                 hoverDisposable.dispose();
+
+                // Dispose CodeLens provider and commands
+                codeLensDisposable.dispose();
+                acceptCommandDisposable.dispose();
+                discardCommandDisposable.dispose();
                 
                 if (discard) {
                     completionState.dismissTokenIdx(documentUri, currentTokenIdx);
@@ -254,6 +299,8 @@ export async function requestAlternatives(
                 completionState.setCurrentAltsTokenIndex(documentUri, -1);
                 
                 completionState.setCurrentStage(Stage.ENTROPY_VIEW);
+                
+                cleanupDisposable.dispose();
             };
             
             // Add the hover disposable to cleanup when done
@@ -264,7 +311,7 @@ export async function requestAlternatives(
                 const isInAlternativesArea = (newLine >= startLine && newLine <= endLine);
                 
                 if (!isInAlternativesArea) {
-                    cleanupAlternatives(true);
+                    cleanupAlternatives(false);
                     // Dispose this event listener
                     cleanupDisposable.dispose();
                 } else {
