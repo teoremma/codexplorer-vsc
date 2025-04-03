@@ -56,7 +56,7 @@ export async function requestAlternatives(
             
             // Create decoration types
             const alternativeDecorationType = vscode.window.createTextEditorDecorationType({
-                backgroundColor: 'rgba(255, 255, 0, 0.3)', // Yellow highlighting
+                backgroundColor: 'rgba(255, 255, 0, 0.1)', // Yellow highlighting
                 border: '1px solid rgba(0, 0, 0, 0.3)',
                 borderRadius: '3px'
             });
@@ -67,12 +67,12 @@ export async function requestAlternatives(
         
             // New decoration type for alternative tokens with yellow background
             const alternativeTokenDecorationType = vscode.window.createTextEditorDecorationType({
-                backgroundColor: 'rgba(255, 255, 0, 0.15)', // Dim yellow background
+                backgroundColor: 'rgba(255, 255, 0, 0.1)', // Dim yellow background
             });
         
             // New decoration type for selected alternative token
             const selectedAlternativeDecorationType = vscode.window.createTextEditorDecorationType({
-                backgroundColor: 'rgba(255, 255, 0, 0.15)', // Dim yellow background
+                backgroundColor: 'rgba(255, 255, 0, 0.1)', // Dim yellow background
                 border: '1px solid rgba(188, 188, 188, 0.8)', // Darker border for selected alternative
                 borderRadius: '3px'
             });
@@ -133,7 +133,7 @@ export async function requestAlternatives(
             
             // Create a decoration type for the common prefix
             const grayedPrefixDecorationType = vscode.window.createTextEditorDecorationType({
-                opacity: '0.5',
+                opacity: '0.3',
                 color: '#888888'
             });
             
@@ -194,11 +194,10 @@ export async function requestAlternatives(
                         // Get the explanation for this alternative
                         const explanation = alternatives[altIndex]?.explanation;
                         
-                        // Make sure the hover appears below the alternative line
                         if (explanation) {
                             const hoverRange = new vscode.Range(
-                                new vscode.Position(position.line, 0),
-                                new vscode.Position(position.line, document.lineAt(position.line).text.length)
+                                new vscode.Position(position.line, linePrefix.length),
+                                new vscode.Position(position.line, editor.document.lineAt(position.line).text.length)
                             );
                             const hoverMessage = new vscode.MarkdownString(`**Alternative Explanation**: ${explanation}`);
                             return new vscode.Hover(hoverMessage, hoverRange);

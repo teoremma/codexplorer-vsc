@@ -111,7 +111,7 @@ function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEdito
 function createCompletionHighlightDecoration(): vscode.TextEditorDecorationType {
     // This function creates a decoration type for highlighting the completion
     return vscode.window.createTextEditorDecorationType({
-        backgroundColor: 'rgba(127, 127, 127, 0.3)', // Yellow background for highlighting
+        backgroundColor: 'rgba(127, 127, 127, 0.1)', // Yellow background for highlighting
     });
 }
 

@@ -107,10 +107,15 @@ async function getFireworksAICompletion(
                 ({token,logprob: logprob as number})
             ).sort((a, b) => b.logprob - a.logprob);
 
-            // // Merge tokens and their probabilities that only differ by whitespace and/or quotes
-            // top_logprobs = whiteSpaceElim(top_logprobs.map(({ token, logprob }) => [token, logprob] as [string, number]))
-            //     .map(([token, logprob]) => ({ token, logprob }));
-            // logprob = top_logprobs[0].logprob;
+            // Merge tokens and their probabilities that only differ by whitespace and/or quotes
+            top_logprobs = whiteSpaceElim(top_logprobs.map(({ token, logprob }) => [token, logprob] as [string, number]))
+                .map(([token, logprob]) => ({ token, logprob }));
+
+            // Normalize token logprobs to reflect the distribution before calculating entropy
+            const totalProb = top_logprobs.reduce((acc, { logprob }) => acc + Math.exp(logprob), 0);
+            top_logprobs = top_logprobs.map(({ token, logprob }) => ({ token, logprob: Math.log(Math.exp(logprob) / totalProb) }));
+
+            logprob = top_logprobs[0].logprob;
 
             const entropy = top_logprobs.reduce((sum:number, lp:any) => {
                 const prob = Math.exp(lp.logprob);
@@ -140,9 +145,9 @@ async function getFireworksAICompletion(
     };
 }
 
-// Merge tokens and their probabilities that only differ by whitespace and/or quotes
+// Merge tokens and their probabilities that only differ by whitespace
 function whiteSpaceElim(topLogprobs: Array<[string, number]>): Array<[string, number]> {
-    const normalizeToken = (token: string) => token.replace(/\s+/g, '').replace(/'/g, '"');
+    const normalizeToken = (token: string) => token.replace(/\s+/g, '');
     const tokenMap = new Map();
     topLogprobs.forEach(([token, prob]) => {
       const normalizedToken = normalizeToken(token);
@@ -273,6 +278,7 @@ export async function fillAlternativesAtToken(
 
     console.log(`Generating ${n_alternatives} alternatives for token "${tokenStr}" with entropy ${step.entropy}`);
     console.log(`Top logprobs: ${step.top_logprobs.map(lp => `${JSON.stringify(lp.token)}: ${lp.logprob}`).join(", ")}`);
+    console.log(`Top probs: ${step.top_logprobs.map(lp => `${lp.token}: ${Math.exp(lp.logprob)}`).join(", ")}`);
     console.log(`Perplexity: ${perplexity}`);
     
     // Create an array of promises for parallel execution

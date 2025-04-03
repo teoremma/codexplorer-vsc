@@ -24,6 +24,9 @@ export function activate(context: vscode.ExtensionContext) {
     const completionState = CompletionStateManager.getInstance();
     // const stageManager = StageManager.getInstance();
 
+    // Toggle Hover Above setting off
+    vscode.workspace.getConfiguration('editor').update('hover.above', false, vscode.ConfigurationTarget.Global);
+
     context.subscriptions.push(
         vscode.commands.registerCommand('codexplorer.getCompletion', () => getCompletions(config, completionState)),
         vscode.commands.registerCommand('codexplorer.requestAlternatives', () => requestAlternatives(config, completionState)),
