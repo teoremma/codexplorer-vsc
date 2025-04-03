@@ -20,6 +20,7 @@ export class CompletionStateManager {
 
     // Stage 1 state
     private currentTokenRanges: vscode.Range[] = [];
+    private isDismissedToken: boolean[] = []; // Used for tracking dismissed tokens
     // Stage 1 decorations
     private tokenEntropyDecorations: vscode.TextEditorDecorationType[] = []; // Used for entropy-based decorations
     private completionHighlightDecoration: vscode.TextEditorDecorationType | undefined; // Used for highlighting the completion range
@@ -76,6 +77,18 @@ export class CompletionStateManager {
 
     public getCurrentTokenRanges(editorId: string): vscode.Range[] {
         return this.currentTokenRanges;
+    }
+
+    public setDismissedTokens(editorId: string, dismissedTokens: boolean[]): void {
+        this.isDismissedToken = dismissedTokens;
+    }
+
+    public getDismissedTokens(editorId: string): boolean[] {
+        return this.isDismissedToken;
+    }
+
+    public dismissTokenIdx(editorId: string, index: number): void {
+        this.isDismissedToken[index] = true;
     }
 
     public getTokenIndexAtPosition(editorId: string, position: vscode.Position): number {

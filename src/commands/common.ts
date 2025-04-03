@@ -55,6 +55,8 @@ export async function updateCurrentCompletion(
     }
     
     const steps = completionData.completions[0].steps;
+    completionState.setDismissedTokens(editorUri, new Array(steps.length).fill(false));
+
     // Start iterating from the end of the original content
     // which is the start of the completion text
     let currentPos = document.positionAt(originalContent.length);
@@ -108,6 +110,15 @@ function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEdito
     });
 }
 
+function createDismissedTokenDecoration(): vscode.TextEditorDecorationType {
+    // This function creates a decoration type for dismissed tokens
+    return vscode.window.createTextEditorDecorationType({
+        // backgroundColor: 'rgba(127, 127, 127, 0.5)', // Grey background for dismissed tokens
+        border: '1px solid rgba(255, 255, 255, 0.3)', // Optional border for visibility
+        borderRadius: '3px' // Optional rounded corners
+    });
+}
+
 function createCompletionHighlightDecoration(): vscode.TextEditorDecorationType {
     // This function creates a decoration type for highlighting the completion
     return vscode.window.createTextEditorDecorationType({
@@ -151,6 +162,9 @@ export function setCompletionDecorations(
 
     const steps: lib.StepInfo[] = completionState.getCurrentCompletion(editorUri).completions[0].steps;
     const stepRanges: vscode.Range[] = completionState.getCurrentTokenRanges(editorUri);
+    const dismissedSteps: boolean[] = completionState.getDismissedTokens(editorUri);
+    console.log(`Dismissed steps: ${dismissedSteps}`);
+
     const tokenEntropyDecorations: vscode.TextEditorDecorationType[] = [];
     
     completionState.clearStage1Decorations();
@@ -182,8 +196,14 @@ export function setCompletionDecorations(
         // console.log(`Step ${i}: entropy = ${step.entropy}, perplexity = ${perplexity}, level = ${perplexityLevel}`);
 
         // Create a decoration type for this entropy level
-        // const decorationType = createTokenEntropyDecoration(perplexityLevel - 1);
-        const decorationType = createTokenEntropyDecoration(perplexity - 1);
+        let decorationType: vscode.TextEditorDecorationType;
+        // const decorationType = createTokenEntropyDecoration(perplexity - 1);
+
+        if (dismissedSteps[i]) {
+            decorationType = createDismissedTokenDecoration();
+        } else {
+            decorationType = createTokenEntropyDecoration(perplexityLevel - 1);
+        }
         
         // Set the decoration for the current token range
         editor.setDecorations(decorationType, [correctedRange]);
