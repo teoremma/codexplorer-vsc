@@ -221,6 +221,12 @@ async function fillNthAlternative(
     }
     // If alternativeToken contains any newline, it is not suitable for alternative generation
     if (alternativeToken.token.includes("\n")) {
+        // Update the completion preview with the explanation
+        step.top_logprobs[alternativeIndex].completionPreview = {
+            text: alternativeToken.token,
+            explanation: ""
+        };
+
         console.error("Alternative token contains newline, skipping:", alternativeToken.token);
         return;
     }

@@ -153,16 +153,27 @@ export function setCompletionDecorations(
     const stepRanges: vscode.Range[] = completionState.getCurrentTokenRanges(editorUri);
     const tokenEntropyDecorations: vscode.TextEditorDecorationType[] = [];
     
-    // TODO: clear previous decorations before setting new ones
+    completionState.clearStage1Decorations();
     // Iterate steps and ranges at the same time to create decorations
 
     for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
         const range = stepRanges[i];
+        const token = step.token;
 
         if (!range) {
             console.log(`No range found for step ${i}`);
             continue;
+        }
+
+        let correctedRange = range;
+        const newLineIndex = token.indexOf('\n');
+        if (newLineIndex !== -1) {
+            // If the token contains a newline, adjust the range to exclude it
+            correctedRange = new vscode.Range(
+                range.start,
+                range.start.translate(0, newLineIndex)
+            );
         }
 
         // Calculate the entropy level (0-5)
@@ -175,7 +186,7 @@ export function setCompletionDecorations(
         const decorationType = createTokenEntropyDecoration(perplexity - 1);
         
         // Set the decoration for the current token range
-        editor.setDecorations(decorationType, [range]);
+        editor.setDecorations(decorationType, [correctedRange]);
         
         // Store the decoration type for later use
         tokenEntropyDecorations.push(decorationType);
@@ -184,6 +195,5 @@ export function setCompletionDecorations(
     // Set a highlight decoration for the entire completion
     setCompletionHighlightDecoration(completionState);
 
-    // completionState.setTokenEntropyDecorations(editorUri, tokenEntropyDecorations);
     completionState.setTokenEntropyDecorations(tokenEntropyDecorations);
 }

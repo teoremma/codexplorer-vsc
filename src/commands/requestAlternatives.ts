@@ -33,7 +33,10 @@ export async function requestAlternatives(
                 
             // Find the token at the current cursor position
             const currentTokenIdx = completionState.getTokenIndexAtPosition(documentUri, cursorPosition);
-            const currenTokenRange = completionState.getCurrentTokenRanges(documentUri)[currentTokenIdx];
+            const currentTokenRange = completionState.getCurrentTokenRanges(documentUri)[currentTokenIdx];
+            const currentStep = completionState.getCurrentCompletion(documentUri).completions[0].steps[currentTokenIdx];
+            const currentToken = currentStep.token;
+
             console.log('currentTokenIdx:', currentTokenIdx);
             completionState.setCurrentAltsTokenIndex(documentUri, currentTokenIdx);
                 
@@ -84,14 +87,23 @@ export async function requestAlternatives(
                 borderRadius: '3px'
             });
 
+            let correctedTokenRange = currentTokenRange;
+            const newLineInTokenIndex = currentToken.indexOf('\n');
+            if (newLineInTokenIndex !== -1) {
+                correctedTokenRange = new vscode.Range(
+                    currentTokenRange.start,
+                    currentTokenRange.start.translate(0, newLineInTokenIndex)
+                );
+            }
             // Apply the custom red decoration only to the current token
-            editor.setDecorations(currentTokenRedDecorationType, [currenTokenRange]);
+            // editor.setDecorations(currentTokenRedDecorationType, [currentTokenRange]);
+            editor.setDecorations(currentTokenRedDecorationType, [correctedTokenRange]);
             
             // Clear all existing red token decorations
             completionState.clearStage1Decorations();
         
             // Insert alternatives below the token's line
-            const lineNumber = currenTokenRange.start.line;
+            const lineNumber = currentTokenRange.start.line;
             let insertPosition = new vscode.Position(lineNumber + 1, 0);
             
             // Get the current line text
@@ -108,7 +120,7 @@ export async function requestAlternatives(
                 insertPosition = new vscode.Position(lineNumber + 1, 0);
             }
 
-            const linePrefix = currentLineText.substring(0, currenTokenRange.start.character);
+            const linePrefix = currentLineText.substring(0, currentTokenRange.start.character);
             
             // Create a preview of what each alternative would generate
             await editor.edit(editBuilder => {
@@ -117,8 +129,9 @@ export async function requestAlternatives(
                     // const alternativeLine = alt.text?.replace(/\n/g, ' ');
                     // Create the alternative line by replacing the current token with the alternative
                     const alternativeLineText = linePrefix + alt.text;
+                    const correctedAltLineText = alternativeLineText.replace('\n', '\\n');
                     // Insert the alternative line
-                    editBuilder.insert(insertPosition, alternativeLineText + '\n');
+                    editBuilder.insert(insertPosition, correctedAltLineText + '\n');
                 });
             });
 
@@ -146,13 +159,13 @@ export async function requestAlternatives(
                 // For common prefix (unchanged)
                 const prefixRange = new vscode.Range(
                     new vscode.Position(i, 0),
-                    new vscode.Position(i, currenTokenRange.start.character) 
+                    new vscode.Position(i, currentTokenRange.start.character) 
                 );
                 commonPrefixDecorations.push(prefixRange);
                 
                 // For alternative tokens (with yellow background)
                 const tokenRange = new vscode.Range(
-                    new vscode.Position(i, currenTokenRange.start.character), 
+                    new vscode.Position(i, currentTokenRange.start.character), 
                     new vscode.Position(i, editor.document.lineAt(i).text.length)
                 );
                 alternativeTokenDecorations.push(tokenRange);
@@ -248,7 +261,7 @@ export async function requestAlternatives(
                     // Update the selected alternative highlight
                     const selectedLine = newPosition.line;
                     const selectedRange = new vscode.Range(
-                        new vscode.Position(selectedLine, currenTokenRange.start.character),
+                        new vscode.Position(selectedLine, currentTokenRange.start.character),
                         new vscode.Position(selectedLine, editor.document.lineAt(selectedLine).text.length)
                     );
                     
