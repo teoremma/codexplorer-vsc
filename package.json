@@ -18,6 +18,14 @@
         "title": "Codexplorer: Get Code Completion"
       },
       {
+        "command": "codexplorer.acceptCompletion",
+        "title": "Codexplorer: Accept Code Completion"
+      },
+      {
+        "command": "codexplorer.dismissCompletion",
+        "title": "Codexplorer: Dismiss Code Completion"
+      },
+      {
         "command": "codexplorer.requestAlternatives",
         "title": "Codexplorer: Request Alternatives"
       },

@@ -1,10 +1,13 @@
 import * as vscode from 'vscode';
 import { ConfigurationService } from './configuration';
 import { CompletionStateManager } from './state/completionState';
-import { DecorationFactory } from './ui/decorations';
+// import { DecorationFactory } from './ui/decorations';
 import { getCompletions } from './commands/getCompletions';
+import { acceptCompletion } from './commands/acceptCompletion';
+import { dismissCompletion } from './commands/dismissCompletion';
 import { requestAlternatives } from './commands/requestAlternatives';
 import { useAlternative } from './commands/useAlternative';
+import { CompletionCodeLensProvider } from './ui/codeLensProvider';
 
 export interface CompletionTokenInfo {
     text: string;
@@ -29,8 +32,17 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('codexplorer.getCompletion', () => getCompletions(config, completionState)),
+        vscode.commands.registerCommand('codexplorer.acceptCompletion', () => acceptCompletion(completionState)),
+        vscode.commands.registerCommand('codexplorer.dismissCompletion', () => dismissCompletion(completionState)),
         vscode.commands.registerCommand('codexplorer.requestAlternatives', () => requestAlternatives(config, completionState)),
         vscode.commands.registerCommand('codexplorer.useAlternative', () => useAlternative(config, completionState))
+    );
+
+    context.subscriptions.push(
+        vscode.languages.registerCodeLensProvider(
+            { pattern: '**/*'},
+            new CompletionCodeLensProvider(completionState),
+        )
     );
 }
 

@@ -153,7 +153,7 @@ export function setCompletionDecorations(
     const stepRanges: vscode.Range[] = completionState.getCurrentTokenRanges(editorUri);
     const tokenEntropyDecorations: vscode.TextEditorDecorationType[] = [];
     
-    // TODO: clear previous decorations before setting new ones
+    completionState.clearStage1Decorations();
     // Iterate steps and ranges at the same time to create decorations
 
     for (let i = 0; i < steps.length; i++) {
@@ -184,6 +184,5 @@ export function setCompletionDecorations(
     // Set a highlight decoration for the entire completion
     setCompletionHighlightDecoration(completionState);
 
-    // completionState.setTokenEntropyDecorations(editorUri, tokenEntropyDecorations);
     completionState.setTokenEntropyDecorations(tokenEntropyDecorations);
 }
