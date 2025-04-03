@@ -75,7 +75,8 @@ async function getFireworksAICompletion(
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`
     };
-    // const logit_bias =
+    // Bias for meta-llama/Llama-3.3-70B-Instruct
+    const logit_bias = {2: -100, 674: -100, 3270: -100, 4304: -100, 7860: -100, 12885: -100};
     const payload = {
         model: modelID,
         prompt: prompt,
@@ -84,16 +85,17 @@ async function getFireworksAICompletion(
         stop: stop,
         temperature: temprerature,
         logprobs: 5,
-        logit_bias: { 2: -100, 674: -100 },
+        logit_bias: logit_bias,
     };
 
     let response;
 
-    const cachedPromptPath = `/Users/emmanuel/repos/codexplorer-vsc/src/resources/pilot.py`;
+    // Find the path to the cached prompt and response
+    const cachedPromptPath = path.join(__dirname, '../src/resources', 'pilot.py');;
     const cachedPrompt = fs.readFileSync(cachedPromptPath, 'utf8');
     if (prompt === cachedPrompt) {
         console.log("Using cached response for prompt");
-        const cachedResponsePath = `/Users/emmanuel/repos/codexplorer-vsc/src/resources/fireworks-response-2025-04-01T19-29-42-977Z.json`;
+        const cachedResponsePath = path.join(__dirname, '../src/resources', 'fireworks-response-2025-04-01T19-29-42-977Z.json');
         const cachedResponse = fs.readFileSync(cachedResponsePath, 'utf8');
         response = {data: JSON.parse(cachedResponse)};
     } else {
