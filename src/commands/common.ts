@@ -126,6 +126,14 @@ function createCompletionHighlightDecoration(): vscode.TextEditorDecorationType 
     });
 }
 
+function createSelectedTokenDecoration(): vscode.TextEditorDecorationType {
+    return vscode.window.createTextEditorDecorationType({
+        // border: '1px solid #3794ff', // Blue border for selected token
+        border: '2px solid rgba(255, 255, 255, 1)', // Blue border for selected token
+        borderRadius: '3px'
+    });
+}
+
 function setCompletionHighlightDecoration(
     completionState: CompletionStateManager,
 ): void {
@@ -147,6 +155,42 @@ function setCompletionHighlightDecoration(
     // Set the decoration for the completion range
     editor.setDecorations(highlightDecorationType, [completionRange]);
     completionState.setCompletionHighlightDecoration(highlightDecorationType);
+}
+
+export function updateSelectionDecoration(completionState: CompletionStateManager): void {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        return;
+    }
+    const editorUri = editor.document.uri.toString();
+    
+    // Get cursor position
+    const cursorPosition = editor.selection.active;
+    
+    // Get token ranges and check if cursor is in a completion token
+    const tokenRanges = completionState.getCurrentTokenRanges(editorUri);
+    const originalContentLength = completionState.getOriginalContent().length;
+    const originalContentEndPosition = editor.document.positionAt(originalContentLength);
+    
+    // Clear previous selection decoration
+    completionState.clearSelectionDecoration();
+    
+    // Only proceed if cursor is within completion area
+    if (editor.document.offsetAt(cursorPosition) < originalContentLength) {
+        return;
+    }
+    
+    // Find which token contains the cursor
+    for (let i = 0; i < tokenRanges.length; i++) {
+        const range = tokenRanges[i];
+        if (range.contains(cursorPosition)) {
+            // Create and apply the selection decoration
+            const selectionDecoration = createSelectedTokenDecoration();
+            editor.setDecorations(selectionDecoration, [range]);
+            completionState.setSelectionDecoration(selectionDecoration);
+            break;
+        }
+    }
 }
 
 export function setCompletionDecorations(
@@ -215,4 +259,7 @@ export function setCompletionDecorations(
     setCompletionHighlightDecoration(completionState);
 
     completionState.setTokenEntropyDecorations(tokenEntropyDecorations);
+
+    // Update selection decoration for cursor position
+    updateSelectionDecoration(completionState);
 }

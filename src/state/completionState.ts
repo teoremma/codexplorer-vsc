@@ -21,9 +21,11 @@ export class CompletionStateManager {
     // Stage 1 state
     private currentTokenRanges: vscode.Range[] = [];
     private isDismissedToken: boolean[] = []; // Used for tracking dismissed tokens
+
     // Stage 1 decorations
     private tokenEntropyDecorations: vscode.TextEditorDecorationType[] = []; // Used for entropy-based decorations
     private completionHighlightDecoration: vscode.TextEditorDecorationType | undefined; // Used for highlighting the completion range
+    private currentSelectionDecoration: vscode.TextEditorDecorationType | undefined;
 
     // Stage 2 state
     private currentAltsTokenIndex: number = -1;
@@ -110,6 +112,19 @@ export class CompletionStateManager {
 
     public setCompletionHighlightDecoration(decoration: vscode.TextEditorDecorationType): void {
         this.completionHighlightDecoration = decoration;
+    }
+
+    // Add these methods
+    public setSelectionDecoration(decoration: vscode.TextEditorDecorationType): void {
+        this.clearSelectionDecoration();
+        this.currentSelectionDecoration = decoration;
+    }
+
+    public clearSelectionDecoration(): void {
+        if (this.currentSelectionDecoration) {
+            this.currentSelectionDecoration.dispose();
+            this.currentSelectionDecoration = undefined;
+        }
     }
 
     public clearStage1Decorations(): void {
