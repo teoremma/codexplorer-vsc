@@ -106,7 +106,8 @@ function createTokenEntropyDecoration(perplexityLevel: number): vscode.TextEdito
     return vscode.window.createTextEditorDecorationType({
         backgroundColor: `rgba(255, 0, 0, ${opacity})`, // Red color with varying opacity
         border: '1px solid rgba(255, 0, 0, 0.3)', // Optional border for visibility
-        borderRadius: '3px' // Optional rounded corners
+        borderRadius: '3px', // Optional rounded corners
+        cursor: 'pointer' 
     });
 }
 
@@ -115,7 +116,8 @@ function createDismissedTokenDecoration(): vscode.TextEditorDecorationType {
     return vscode.window.createTextEditorDecorationType({
         // backgroundColor: 'rgba(127, 127, 127, 0.5)', // Grey background for dismissed tokens
         border: '1px solid rgba(255, 255, 255, 0.3)', // Optional border for visibility
-        borderRadius: '3px' // Optional rounded corners
+        borderRadius: '3px', // Optional rounded corners
+        cursor: 'pointer' 
     });
 }
 
@@ -123,6 +125,7 @@ function createCompletionHighlightDecoration(): vscode.TextEditorDecorationType 
     // This function creates a decoration type for highlighting the completion
     return vscode.window.createTextEditorDecorationType({
         backgroundColor: 'rgba(127, 127, 127, 0.3)', // Yellow background for highlighting
+        cursor: 'pointer', 
     });
 }
 
@@ -130,7 +133,8 @@ function createSelectedTokenDecoration(): vscode.TextEditorDecorationType {
     return vscode.window.createTextEditorDecorationType({
         // border: '1px solid #3794ff', // Blue border for selected token
         border: '2px solid rgba(255, 255, 255, 1)', // Blue border for selected token
-        borderRadius: '3px'
+        borderRadius: '3px',
+        cursor: 'pointer',
     });
 }
 
