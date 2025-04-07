@@ -129,6 +129,7 @@ export async function requestAlternatives(
                     // const alternativeLine = alt.text?.replace(/\n/g, ' ');
                     // Create the alternative line by replacing the current token with the alternative
                     const alternativeLineText = linePrefix + alt.text;
+                    console.log('alternativeLineText:', alternativeLineText);
                     const correctedAltLineText = alternativeLineText.replaceAll('\n', '');
                     // Insert the alternative line
                     editBuilder.insert(insertPosition, correctedAltLineText + '\n');

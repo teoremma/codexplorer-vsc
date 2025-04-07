@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 export interface CompletionPreview {
+    steps: StepInfo[];
     text: string;
     explanation: string;
 }
@@ -224,11 +225,13 @@ async function fillNthAlternative(
     const originalPrompt = completions.prompt;
     const originalCompletionText = completions.completions[0].text;
     let altText;
+    let altSteps;
 
     // If alternativeToken contains any newline, it is not suitable for alternative generation
     if (alternativeToken.token.includes("\n")) {
         // Update the completion preview with the explanation
         step.top_logprobs[alternativeIndex].completionPreview = {
+            steps: [],
             text: alternativeToken.token,
             explanation: ""
         };
@@ -237,6 +240,8 @@ async function fillNthAlternative(
     } else {
         const completionPrefix = originalCompletionText.substring(0, step.text_offset);
         const prompt = originalPrompt + completionPrefix + alternativeToken.token;
+        console.log("Prompt for alternative generation:", prompt);
+        // Prompt is not right, the alternativeToken is not being computed correctly once we use one of the alternatives 
 
         console.log(`Generating alternative for token "${originalTokenText}" at index ${tokenIndex} with alternative token "${alternativeToken.token}"`);
 
@@ -249,6 +254,7 @@ async function fillNthAlternative(
         );
 
         altText = altCompletion.completions[0].text;
+        altSteps = altCompletion.completions[0].steps;
         const newlinePos = altText.indexOf('\n');
         if (newlinePos !== -1) {
             altText = altText.substring(0, newlinePos);
@@ -282,6 +288,7 @@ async function fillNthAlternative(
 
     // Update the completion preview with the explanation
     step.top_logprobs[alternativeIndex].completionPreview = {
+        steps: altSteps || [],
         text: altText,
         explanation: explanation
     };
@@ -409,67 +416,73 @@ async function getChatCompletion(
 export async function resampleAtToken(
     completions: ProviderCompletions,
     newToken: string,
+    newText: string | undefined,
+    newSteps: StepInfo[] | undefined,
     newTokenIndex: number,
     maxTokens: number,
     apiKey: string,
 ): Promise<ProviderCompletions> {
-    // Check that the token index is valid
     if (newTokenIndex < 0 || newTokenIndex >= completions.completions[0].steps.length) {
         throw new Error(`Invalid token index: ${newTokenIndex}`);
     }
 
     const originalCompletion = completions.completions[0];
     const originalSteps = originalCompletion.steps;
-    
+
     // Find the position of the token to be replaced
     const tokenToReplace = originalSteps[newTokenIndex];
     const tokenPosition = tokenToReplace.text_offset;
-    
+
     // Get the text up to the token we're replacing
     const textBeforeToken = originalCompletion.text.substring(0, tokenPosition);
-    
-    // Create a new prompt that includes everything up to the token position plus our new token
-    const newPrompt = completions.prompt + textBeforeToken + newToken;
-    
-    // Generate a new completion starting from this new prompt
+
+    // Create a new prompt with the new token and the rest of the alternative line
+    const newTextFromSteps = newSteps ? newSteps.map(step => step.token).join('') : '';
+    const newPrompt = completions.prompt + textBeforeToken + newToken + newTextFromSteps;
+
     const newCompletionsResult = await getFireworksAICompletion(
         newPrompt,
         completions.modelID,
         maxTokens,
         apiKey
     );
-    
-    // Create the merged completion text
+
     const mergedCompletionText = 
         textBeforeToken + 
         newToken + 
+        newTextFromSteps +
         newCompletionsResult.completions[0].text;
-    
-    // Create merged steps:
+
     // 1. Keep steps from the original completion up to the replaced token
     const mergedSteps = [...originalSteps.slice(0, newTokenIndex)];
-    
-    // 2. Add a step for our new token
+
+    // 2. Insert the new token
     mergedSteps.push({
-        // text_offset: tokenPosition,
-        // token: newToken,
-        // logprob: 0, // We don't have actual log probability for manually inserted token
-        // entropy: 0, 
-        // top_logprobs: []
         ...tokenToReplace,
-        token: newToken,
+        token: newToken
     });
-    
-    // 3. Add steps from the new completion with adjusted text offsets
-    const baseOffset = tokenPosition + newToken.length;
+
+    // 3. Add steps for our new alternative tokens
+    let baseOffset = tokenPosition + newToken.length;
+    if (newSteps) {
+        for (const step of newSteps) {
+            const tokenLen = step.token.length;
+            mergedSteps.push({
+                ...step,
+                text_offset: baseOffset
+            });
+            baseOffset += tokenLen;
+        }
+    }
+
+    // 4. Add steps from the newly generated completion
     for (const step of newCompletionsResult.completions[0].steps) {
         mergedSteps.push({
             ...step,
             text_offset: baseOffset + step.text_offset
         });
     }
-    
-    // Return the merged result
+
     return {
         prompt: completions.prompt,
         modelID: completions.modelID,

@@ -59,6 +59,7 @@ export async function useAlternative(
     
     // Get the selected alternative token
     const alternativeToken = currentCompletions.completions[0].steps[tokenIndex].top_logprobs[alternativeIndex].token;
+    const alternativeLineSteps = currentCompletions.completions[0].steps[tokenIndex].top_logprobs[alternativeIndex].completionPreview?.steps;
     
     // Show that we're processing
     vscode.window.showInformationMessage(`Applying alternative token "${alternativeToken}"...`);
@@ -84,6 +85,7 @@ export async function useAlternative(
         const resampledCompletion = await lib.resampleAtToken(
             currentCompletions,
             alternativeToken,
+            alternativeLineSteps,
             tokenIndex,
             config.maxTokens,
             config.apiKey
@@ -102,7 +104,7 @@ export async function useAlternative(
             vscode.window.showErrorMessage(`Failed to apply alternative: ${error.message}`);
         }
         
-        // // Restore the original token decorations as fallback
+        // Restore the original token decorations as fallback
         // completionState.restoreTokenDecorationState(documentUri);
     }
 }
