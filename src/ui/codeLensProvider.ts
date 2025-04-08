@@ -24,6 +24,18 @@ export class CompletionCodeLensProvider implements vscode.CodeLensProvider {
         // Create a range for the first line of the completion
         const line = completionStartPosition.line;
         const range = new vscode.Range(line, 0, line, 0);
+
+        // Create CodeLens actions for going back and forward between suggestions
+        const backCommand = {
+            title: "◀",
+            command: "codexplorer.gotoPreviousCompletion",
+            tooltip: "Go back to the previous suggestion state"
+        };
+        const forwardCommand = {
+            title: "▶",
+            command: "codexplorer.gotoNextCompletion",
+            tooltip: "Go forward to the next suggestion state"
+        };
         
         // Create CodeLens actions for accept and dismiss
         const acceptCommand = {
@@ -39,6 +51,8 @@ export class CompletionCodeLensProvider implements vscode.CodeLensProvider {
         };
         
         return [
+            new vscode.CodeLens(range, backCommand),
+            new vscode.CodeLens(range, forwardCommand),
             new vscode.CodeLens(range, acceptCommand),
             new vscode.CodeLens(range, dismissCommand)
         ];

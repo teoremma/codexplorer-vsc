@@ -26,6 +26,8 @@ export async function acceptCompletion(
 
     completionState.clearStage1Decorations();
 
+     completionState.clearCompletionHistory();
+
     codeLensProvider.refresh();
     
     vscode.window.showInformationMessage('Completion accepted successfully!');

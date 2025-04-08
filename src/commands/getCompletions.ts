@@ -45,6 +45,7 @@ export async function getCompletions(
 
             updateCurrentCompletion(completionData, completionState);
             completionState.setCurrentStage(Stage.ENTROPY_VIEW);
+            completionState.addCompletionToHistory(editor.document.uri.toString(), completionData);
         });
     } catch (error) {
         if (error instanceof Error) {

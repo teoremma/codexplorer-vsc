@@ -18,6 +18,10 @@ export class CompletionStateManager {
     private currentCompletion: ProviderCompletions = { prompt: "", modelID: "", completions: [] };
     private currentStage: Stage = Stage.IDLE;
 
+    // Completion history
+    private completionHistory: ProviderCompletions[] = [];
+    private historyPosition: number = -1; // Track current position in history
+
     // Stage 1 state
     private currentTokenRanges: vscode.Range[] = [];
     private isDismissedToken: boolean[] = []; // Used for tracking dismissed tokens
@@ -56,13 +60,56 @@ export class CompletionStateManager {
         this.currentCompletion = completion;
     }
 
+    // Methods for completion history management
+    public addCompletionToHistory(editorId: string, completion: ProviderCompletions): void {
+        this.completionHistory.push(completion);
+        this.historyPosition = this.completionHistory.length - 1; // Update history position to the latest entry
+        this.currentCompletion = completion; // Set current completion to the new one
+    }
+
+    public getCompletionHistory(): ProviderCompletions[] {
+        return this.completionHistory;
+    }
+    
+    public getCurrentHistoryPosition(): number {
+        return this.historyPosition;
+    }
+    
+    public setCurrentHistoryPosition(position: number): void {
+        if (position >= 0 && position < this.completionHistory.length) {
+            this.historyPosition = position;
+            this.currentCompletion = this.completionHistory[position];
+        }
+    }
+    
+    public clearCompletionHistory(): void {
+        this.completionHistory = [];
+        this.historyPosition = -1;
+    }
+
     public getCurrentCompletion(editorId: string): ProviderCompletions {
         return this.currentCompletion;
+    }
+
+    public getCompletionHistoryAt(index: number): ProviderCompletions | undefined {
+        if (index < 0 || index >= this.completionHistory.length) {
+            return undefined;
+        }
+        return this.completionHistory[index];
+    }
+
+    public getCompletionHistoryLength(): number {
+        return this.completionHistory.length;
     }
 
     // Stage management
     public setCurrentStage(stage: Stage): void {
         this.currentStage = stage;
+
+        // Clear history when returning to IDLE stage
+        if (stage === Stage.IDLE) {
+            this.clearCompletionHistory();
+        }
     }
 
     public getCurrentStage(): Stage {

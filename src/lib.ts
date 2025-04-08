@@ -1,6 +1,8 @@
 import axios from "axios";
+
 const fs = require('fs');
 const path = require('path');
+const {closest} = require('fastest-levenshtein');
 
 export interface CompletionPreview {
     steps: StepInfo[];
@@ -70,6 +72,8 @@ async function getFireworksAICompletion(
     apiKey: string,
     stop: string[] = ["\n\n", "```"],
     temprerature: number = 0.0,
+    numCompletions: number = 1,
+    top_k: number = 1,
 ): Promise<ProviderCompletions> {
     const endpoint = "https://api.fireworks.ai/inference/v1/completions";
     const headers = {
@@ -80,9 +84,10 @@ async function getFireworksAICompletion(
     const logit_bias = {2: -100, 674: -100, 3270: -100, 4304: -100, 7275: -100, 7860: -100, 12713: -100, 12885: -100};
     const payload = {
         model: modelID,
+        n: numCompletions,
         prompt: prompt,
         max_tokens: maxTokens,
-        top_k: 1,
+        top_k: top_k,
         stop: stop,
         temperature: temprerature,
         logprobs: 5,
@@ -416,7 +421,6 @@ async function getChatCompletion(
 export async function resampleAtToken(
     completions: ProviderCompletions,
     newToken: string,
-    newText: string | undefined,
     newSteps: StepInfo[] | undefined,
     newTokenIndex: number,
     maxTokens: number,
@@ -428,7 +432,6 @@ export async function resampleAtToken(
 
     const originalCompletion = completions.completions[0];
     const originalSteps = originalCompletion.steps;
-
     // Find the position of the token to be replaced
     const tokenToReplace = originalSteps[newTokenIndex];
     const tokenPosition = tokenToReplace.text_offset;
@@ -438,20 +441,68 @@ export async function resampleAtToken(
 
     // Create a new prompt with the new token and the rest of the alternative line
     const newTextFromSteps = newSteps ? newSteps.map(step => step.token).join('') : '';
+
+    // Get all the steps after the line that we're replacing
+    // Find the index of the first newline character after the token position
+    const textAfterToken = originalCompletion.text.substring(tokenPosition + tokenToReplace.token.length);
+    const firstNewlinePos = textAfterToken.indexOf('\n');
+    
+    // If there's no newline, all remaining steps are the postfix steps
+    // Otherwise, find the step that corresponds to the position after the newline
+    const firstNewlineOffset = firstNewlinePos === -1 ? 
+        originalCompletion.text.length : 
+        tokenPosition + tokenToReplace.token.length + firstNewlinePos + 1;
+    
+    // Get all steps that start at or after the position of the first character after the newline
+    const originalPostfixSteps = originalSteps.filter(step => step.text_offset >= firstNewlineOffset);
+    const originalPostfixText = firstNewlinePos === -1 ? '' : textAfterToken.substring(firstNewlinePos + 1);
+    
     const newPrompt = completions.prompt + textBeforeToken + newToken + newTextFromSteps;
 
-    const newCompletionsResult = await getFireworksAICompletion(
+    const newCompletions = await getFireworksAICompletion(
         newPrompt,
         completions.modelID,
         maxTokens,
-        apiKey
+        apiKey,
+        ["\n\n", "```"], 
+        0.2,
+        10,  // num_completions
+        5, // top_k
     );
+
+    console.log("Original postfix:", originalPostfixText);
+
+    let i = 1;
+    for (const completion of newCompletions.completions) {
+        console.log(`Postfix #${i}:`, completion.text);
+        i++;
+    }
+
+    // Find the most similar completion to the original postfix using levenshtein distance
+    const mostSimilarText = closest(originalPostfixText, newCompletions.completions.map(completion => completion.text));
+    const simIdx = newCompletions.completions.findIndex(completion => completion.text === mostSimilarText);
+    const newCompletionsResult = newCompletions.completions[simIdx];
+    console.log("Most similar postfix:", newCompletionsResult.text);
+
+    // Go through the new completion token by token, and if it matches the original postfix then replace it with the original token info
+    // Hack AF
+    for (let i = 0; i < newCompletionsResult.steps.length; i++) {
+        const step = newCompletionsResult.steps[i];
+        if (step.token === originalPostfixSteps[i].token) {
+            newCompletionsResult.steps[i] = {
+                ...step,
+                logprob: originalPostfixSteps[i].logprob,
+                top_logprobs: originalPostfixSteps[i].top_logprobs,
+                entropy: originalPostfixSteps[i].entropy,
+            };
+        }
+    } 
 
     const mergedCompletionText = 
         textBeforeToken + 
         newToken + 
         newTextFromSteps +
-        newCompletionsResult.completions[0].text;
+        newCompletionsResult.text;
 
     // 1. Keep steps from the original completion up to the replaced token
     const mergedSteps = [...originalSteps.slice(0, newTokenIndex)];
@@ -476,7 +527,7 @@ export async function resampleAtToken(
     }
 
     // 4. Add steps from the newly generated completion
-    for (const step of newCompletionsResult.completions[0].steps) {
+    for (const step of newCompletionsResult.steps) {
         mergedSteps.push({
             ...step,
             text_offset: baseOffset + step.text_offset

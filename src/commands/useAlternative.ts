@@ -93,6 +93,8 @@ export async function useAlternative(
         
         // Update the completion with the new resampled result
         await updateCurrentCompletion(resampledCompletion, completionState);
+        // Update the history with the new completion
+        completionState.addCompletionToHistory(editor.document.uri.toString(), resampledCompletion);
         
         vscode.window.showInformationMessage(`Alternative token "${alternativeToken}" applied successfully!`);
 

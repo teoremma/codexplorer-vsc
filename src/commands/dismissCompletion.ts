@@ -26,6 +26,9 @@ export async function dismissCompletion(
     // Clear any existing decorations
     completionState.clearStage1Decorations();
 
+    // Clear the completion history
+    completionState.clearCompletionHistory();
+
     // Clear the editor content and reinsert the original content
     const originalContent = completionState.getOriginalContent();
     await editor.edit(editBuilder => {

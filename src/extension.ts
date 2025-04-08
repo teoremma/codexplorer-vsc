@@ -7,6 +7,7 @@ import { acceptCompletion } from './commands/acceptCompletion';
 import { dismissCompletion } from './commands/dismissCompletion';
 import { requestAlternatives } from './commands/requestAlternatives';
 import { useAlternative } from './commands/useAlternative';
+import { gotoPreviousCompletion, gotoNextCompletion } from './commands/history';
 import { CompletionCodeLensProvider } from './ui/codeLensProvider';
 import { updateSelectionDecoration } from './commands/common';
 
@@ -43,7 +44,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('codexplorer.acceptCompletion', () => acceptCompletion(completionState, codeLensProvider)),
         vscode.commands.registerCommand('codexplorer.dismissCompletion', () => dismissCompletion(completionState)),
         vscode.commands.registerCommand('codexplorer.requestAlternatives', () => requestAlternatives(config, completionState)),
-        vscode.commands.registerCommand('codexplorer.useAlternative', () => useAlternative(config, completionState))
+        vscode.commands.registerCommand('codexplorer.useAlternative', () => useAlternative(config, completionState)),
+        vscode.commands.registerCommand('codexplorer.gotoPreviousCompletion', () => gotoPreviousCompletion(completionState)),
+        vscode.commands.registerCommand('codexplorer.gotoNextCompletion', () => gotoNextCompletion(completionState))
     );
 
     context.subscriptions.push(
