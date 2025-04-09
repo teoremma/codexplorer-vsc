@@ -83,7 +83,7 @@
       "properties": {
         "codexplorer.apiKey": {
           "type": "string",
-          "default": "fw_3ZaA7e1RbSL9FbxcRntD6qZH",
+          "default": "",
           "description": "The API key for FireworksAI."
         },
         "codexplorer.modelID": {
