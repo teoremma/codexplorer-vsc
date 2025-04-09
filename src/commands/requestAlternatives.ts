@@ -3,7 +3,7 @@ import { DecorationFactory } from '../ui/decorations';
 import { ConfigurationService } from '../configuration';
 import { CompletionStateManager, Stage } from '../state/completionState';
 import * as lib from '../lib';
-import { setCompletionDecorations } from './common';
+import { setCompletionDecorations, updateChangedToken } from './common';
 
 export async function requestAlternatives(
     config: ReturnType<typeof ConfigurationService.getConfig>,
@@ -296,6 +296,7 @@ export async function requestAlternatives(
                 // Restore the original token decorations
                 // completionState.restoreTokenDecorationState(documentUri);
                 setCompletionDecorations(completionState);
+                updateChangedToken(completionState, editor);
                                     
                 completionState.setCurrentAltsTokenIndex(documentUri, -1);
                 

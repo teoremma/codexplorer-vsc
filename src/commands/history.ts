@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { CompletionStateManager } from '../state/completionState';
-import { updateCurrentCompletion } from './common';
+import { updateCurrentCompletion, updateChangedToken} from './common';
 
 export async function gotoPreviousCompletion(
     completionState: CompletionStateManager
@@ -21,9 +21,12 @@ export async function gotoPreviousCompletion(
     if (previousCompletion) {
         // Set current position in history
         completionState.setCurrentHistoryPosition(newPosition);
-        
         // Update UI with the previous completion
         await updateCurrentCompletion(previousCompletion, completionState);
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            updateChangedToken(completionState, editor);
+        }
         vscode.window.showInformationMessage(`Navigated to completion ${newPosition + 1} of ${historyLength}`);
     }
 }
@@ -46,10 +49,13 @@ export async function gotoNextCompletion(
     
     if (nextCompletion) {
         // Set current position in history
-        completionState.setCurrentHistoryPosition(newPosition);
-        
+        completionState.setCurrentHistoryPosition(newPosition);   
         // Update UI with the next completion
         await updateCurrentCompletion(nextCompletion, completionState);
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            updateChangedToken(completionState, editor);
+        }
         vscode.window.showInformationMessage(`Navigated to completion ${newPosition + 1} of ${historyLength}`);
     }
 }

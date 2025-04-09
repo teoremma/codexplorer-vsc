@@ -27,12 +27,12 @@ export class CompletionCodeLensProvider implements vscode.CodeLensProvider {
 
         // Create CodeLens actions for going back and forward between suggestions
         const backCommand = {
-            title: "◀",
+            title: "◀ Back",
             command: "codexplorer.gotoPreviousCompletion",
             tooltip: "Go back to the previous suggestion state"
         };
         const forwardCommand = {
-            title: "▶",
+            title: "▶ Forward",
             command: "codexplorer.gotoNextCompletion",
             tooltip: "Go forward to the next suggestion state"
         };

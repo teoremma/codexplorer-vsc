@@ -53,15 +53,15 @@
       },
       {
         "command": "codexplorer.requestAlternatives",
-        "key": "ctrl+alt+;",
-        "mac": "cmd+alt+;",
-        "when": "editorTextFocus"
+        "key": "enter",
+        "mac": "enter",
+        "when": "editorTextFocus && codexplorer.entropyViewActive"
       },
       {
         "command": "codexplorer.useAlternative",
-        "key": "ctrl+alt+'",
-        "mac": "cmd+alt+'",
-        "when": "editorTextFocus"
+        "key": "enter",
+        "mac": "enter",
+        "when": "editorTextFocus && codexplorer.alternativesViewActive"
       }
     ],
     "menus": {

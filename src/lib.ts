@@ -246,8 +246,6 @@ async function fillNthAlternative(
         const completionPrefix = originalCompletionText.substring(0, step.text_offset);
         const prompt = originalPrompt + completionPrefix + alternativeToken.token;
         console.log("Prompt for alternative generation:", prompt);
-        // Prompt is not right, the alternativeToken is not being computed correctly once we use one of the alternatives 
-
         console.log(`Generating alternative for token "${originalTokenText}" at index ${tokenIndex} with alternative token "${alternativeToken.token}"`);
 
         const altCompletion = await getFireworksAICompletion(
@@ -488,7 +486,7 @@ export async function resampleAtToken(
     // Hack AF
     for (let i = 0; i < newCompletionsResult.steps.length; i++) {
         const step = newCompletionsResult.steps[i];
-        if (step.token === originalPostfixSteps[i].token) {
+        if (originalPostfixSteps[i] !== undefined && step.token === originalPostfixSteps[i].token) {
             newCompletionsResult.steps[i] = {
                 ...step,
                 logprob: originalPostfixSteps[i].logprob,

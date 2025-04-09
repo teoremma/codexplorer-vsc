@@ -138,6 +138,14 @@ function createSelectedTokenDecoration(): vscode.TextEditorDecorationType {
     });
 }
 
+function createChangedTokenDecoration(): vscode.TextEditorDecorationType {
+    return vscode.window.createTextEditorDecorationType({
+        border: '1px solid #3794ff',
+        borderRadius: '3px', 
+        cursor: 'pointer' 
+    });
+}
+
 function setCompletionHighlightDecoration(
     completionState: CompletionStateManager,
 ): void {
@@ -195,6 +203,24 @@ export function updateSelectionDecoration(completionState: CompletionStateManage
             break;
         }
     }
+}
+
+export function updateChangedToken(completionState: CompletionStateManager, editor: vscode.TextEditor): void {
+    completionState.clearChangedTokenDecoration();
+    const position = completionState.getCurrentHistoryPosition();
+    if (position <= 0) {
+        return;
+    }
+    const changedTokenIdx = completionState.getChangedTokenIdxAt(position);
+    if (changedTokenIdx === undefined) {
+        return;
+    }
+    const tokenRanges = completionState.getCurrentTokenRanges(editor.document.uri.toString());
+    const changedTokenDecoration = createChangedTokenDecoration();
+    console.log(`Changed token index: ${changedTokenIdx}`);
+    // Add a thicker border to indicate the swapped token in each completion in the history
+    editor.setDecorations(changedTokenDecoration, [tokenRanges[changedTokenIdx]]);
+    completionState.setChangedTokenDecoration(changedTokenDecoration);
 }
 
 export function setCompletionDecorations(

@@ -12,6 +12,11 @@ export enum Stage {
 //     range: vscode.Range; // The range of the token in the document 
 // }
 
+interface HistoryEntry {
+    completion: ProviderCompletions;
+    changedTokenIdx: number;
+}
+
 export class CompletionStateManager {
     private static instance: CompletionStateManager;
     private originalContent: string = "";
@@ -19,7 +24,7 @@ export class CompletionStateManager {
     private currentStage: Stage = Stage.IDLE;
 
     // Completion history
-    private completionHistory: ProviderCompletions[] = [];
+    private completionHistory: HistoryEntry[] = [];
     private historyPosition: number = -1; // Track current position in history
 
     // Stage 1 state
@@ -30,6 +35,7 @@ export class CompletionStateManager {
     private tokenEntropyDecorations: vscode.TextEditorDecorationType[] = []; // Used for entropy-based decorations
     private completionHighlightDecoration: vscode.TextEditorDecorationType | undefined; // Used for highlighting the completion range
     private currentSelectionDecoration: vscode.TextEditorDecorationType | undefined;
+    private changedTokenDecoration: vscode.TextEditorDecorationType | undefined; // Used for highlighting the changed token
 
     // Stage 2 state
     private currentAltsTokenIndex: number = -1;
@@ -61,13 +67,21 @@ export class CompletionStateManager {
     }
 
     // Methods for completion history management
-    public addCompletionToHistory(editorId: string, completion: ProviderCompletions): void {
-        this.completionHistory.push(completion);
+    public addCompletionToHistory(editorId: string, completion: ProviderCompletions, changedTokenIdx: number): void {
+        this.completionHistory.push({completion, changedTokenIdx});
         this.historyPosition = this.completionHistory.length - 1; // Update history position to the latest entry
         this.currentCompletion = completion; // Set current completion to the new one
     }
 
-    public getCompletionHistory(): ProviderCompletions[] {
+    public setCompletionHistory(history: HistoryEntry[]): void {
+        this.completionHistory = history;
+        this.historyPosition = history.length - 1;
+        if (this.historyPosition >= 0) {
+            this.currentCompletion = history[this.historyPosition].completion;
+        }
+    }
+
+    public getCompletionHistory(): HistoryEntry[] {
         return this.completionHistory;
     }
     
@@ -78,7 +92,7 @@ export class CompletionStateManager {
     public setCurrentHistoryPosition(position: number): void {
         if (position >= 0 && position < this.completionHistory.length) {
             this.historyPosition = position;
-            this.currentCompletion = this.completionHistory[position];
+            this.currentCompletion = this.completionHistory[position].completion; 
         }
     }
     
@@ -95,7 +109,14 @@ export class CompletionStateManager {
         if (index < 0 || index >= this.completionHistory.length) {
             return undefined;
         }
-        return this.completionHistory[index];
+        return this.completionHistory[index].completion;
+    }
+
+    public getChangedTokenIdxAt(index: number): number | undefined {
+        if (index < 0 || index >= this.completionHistory.length) {
+            return undefined;
+        }
+        return this.completionHistory[index].changedTokenIdx;
     }
 
     public getCompletionHistoryLength(): number {
@@ -105,6 +126,9 @@ export class CompletionStateManager {
     // Stage management
     public setCurrentStage(stage: Stage): void {
         this.currentStage = stage;
+
+        vscode.commands.executeCommand('setContext', 'codexplorer.alternativesViewActive', stage === Stage.ALTERNATIVES_VIEW);
+        vscode.commands.executeCommand('setContext', 'codexplorer.entropyViewActive', stage === Stage.ENTROPY_VIEW);
 
         // Clear history when returning to IDLE stage
         if (stage === Stage.IDLE) {
@@ -174,11 +198,28 @@ export class CompletionStateManager {
         }
     }
 
+    public setChangedTokenDecoration(decoration: vscode.TextEditorDecorationType): void {
+        this.changedTokenDecoration = decoration;
+    }
+
+    public getChangedTokenDecoration(): vscode.TextEditorDecorationType | undefined {
+        return this.changedTokenDecoration;
+    }
+
+    public clearChangedTokenDecoration(): void {
+        if (this.changedTokenDecoration) {
+            this.changedTokenDecoration.dispose();
+            this.changedTokenDecoration = undefined;
+        }
+    }
+
     public clearStage1Decorations(): void {
         this.completionHighlightDecoration?.dispose(); // Dispose of the current highlight decoration if it exists
         this.tokenEntropyDecorations.forEach(decoration => {
             decoration.dispose();
         });
         this.tokenEntropyDecorations = [];
+        this.clearSelectionDecoration();
+        this.clearChangedTokenDecoration();
     }
 }

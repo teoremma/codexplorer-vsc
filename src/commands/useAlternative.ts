@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { CompletionStateManager, Stage } from '../state/completionState';
 import { ConfigurationService } from '../configuration';
 import * as lib from '../lib';
-import { updateCurrentCompletion } from './common';
+import { updateChangedToken, updateCurrentCompletion} from './common';
 
 export async function useAlternative(
     config: ReturnType<typeof ConfigurationService.getConfig>,
@@ -93,8 +93,8 @@ export async function useAlternative(
         
         // Update the completion with the new resampled result
         await updateCurrentCompletion(resampledCompletion, completionState);
-        // Update the history with the new completion
-        completionState.addCompletionToHistory(editor.document.uri.toString(), resampledCompletion);
+        completionState.addCompletionToHistory(editor.document.uri.toString(), resampledCompletion, tokenIndex);
+        updateChangedToken(completionState, editor);
         
         vscode.window.showInformationMessage(`Alternative token "${alternativeToken}" applied successfully!`);
 
